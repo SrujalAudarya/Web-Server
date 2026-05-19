@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>About</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <h1>About Page</h1>
     <p>This is about page served by Java server.</p>
-
+    <form action="/contact" method="POST">
+        <input type="text" name="name" placeholder="Enter name">
+        <input type="email" name="email" placeholder="Enter email">
+        <textarea name="message" placeholder="Enter message"></textarea>
+        <button type="submit">Send</button>
+    </form>
     <a href="/">Home</a>
 </body>
+
 </html>

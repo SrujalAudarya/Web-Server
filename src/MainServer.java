@@ -2,6 +2,8 @@
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class MainServer {
@@ -24,7 +26,7 @@ public class MainServer {
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                handleClient(socket);
+                new Thread(() -> handleClient(socket)).start();
             }
 
         } catch (IOException e) {
@@ -34,21 +36,13 @@ public class MainServer {
 
     private static void loadConfig() {
         try {
-
-            FileInputStream fis
-                    = new FileInputStream("config/server.properties");
+            FileInputStream fis = new FileInputStream("config/server.properties");
 
             props.load(fis);
 
-            PORT = Integer.parseInt(
-                    props.getProperty("server.port")
-            );
-
-            WWW_FOLDER
-                    = props.getProperty("server.www");
-
-            HTDOCS_FOLDER
-                    = props.getProperty("server.htdocs");
+            PORT = Integer.parseInt(props.getProperty("server.port"));
+            WWW_FOLDER = props.getProperty("server.www");
+            HTDOCS_FOLDER = props.getProperty("server.htdocs");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -74,16 +68,15 @@ public class MainServer {
             writeLog("Request: " + requestLine);
 
             String[] requestParts = requestLine.split(" ");
+            String method = requestParts[0];
             String path = requestParts[1];
 
-            // API ROUTES
-            if (path.equals("/api/status")) {
-                sendJson(output, "{\"status\":\"running\", \"server\":\"MyJavaServer\"}");
+            if (path.startsWith("/api/")) {
+                handleApiRequest(method, path, reader, output);
                 socket.close();
                 return;
             }
 
-            // Dynamic template page from htdocs
             if (path.equals("/user")) {
                 String html = renderTemplate(
                         "user.html",
@@ -98,7 +91,6 @@ public class MainServer {
 
             File file;
 
-            // Developer/server UI route
             if (path.startsWith("/server")) {
                 String serverPath = path.replaceFirst("/server", "");
 
@@ -110,7 +102,6 @@ public class MainServer {
                 file = new File(WWW_FOLDER + serverPath);
 
             } else {
-                // User website route
                 path = resolvePath(path);
                 file = new File(HTDOCS_FOLDER + path);
             }
@@ -126,6 +117,104 @@ public class MainServer {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void handleApiRequest(
+            String method,
+            String path,
+            BufferedReader reader,
+            OutputStream output
+    ) throws IOException {
+
+        if (method.equals("GET") && path.equals("/api/status")) {
+            sendJson(output, "{\"status\":\"running\",\"server\":\"MyJavaServer\"}");
+            return;
+        }
+
+        if (method.equals("GET") && path.equals("/api/users")) {
+            sendJson(output, "[{\"id\":1,\"name\":\"Srujal\"},{\"id\":2,\"name\":\"Admin\"}]");
+            return;
+        }
+
+        if (method.equals("POST") && path.equals("/api/users")) {
+            String body = readRequestBody(reader);
+            Map<String, String> data = parseFormData(body);
+
+            String name = data.get("name");
+            String email = data.get("email");
+
+            writeLog("CREATE USER -> " + name + " | " + email);
+
+            sendJson(output,
+                    "{\"message\":\"User created successfully\",\"name\":\""
+                    + name + "\",\"email\":\"" + email + "\"}"
+            );
+            return;
+        }
+
+        if (method.equals("POST") && path.equals("/api/login")) {
+            String body = readRequestBody(reader);
+            Map<String, String> data = parseFormData(body);
+
+            String email = data.get("email");
+            String password = data.get("password");
+
+            writeLog("LOGIN ATTEMPT -> " + email);
+
+            if ("admin@gmail.com".equals(email) && "12345".equals(password)) {
+                sendJson(output, "{\"success\":true,\"message\":\"Login successful\"}");
+            } else {
+                sendJson(output, "{\"success\":false,\"message\":\"Invalid login\"}");
+            }
+            return;
+        }
+
+        if (method.equals("POST") && path.equals("/api/contact")) {
+            String body = readRequestBody(reader);
+            Map<String, String> data = parseFormData(body);
+
+            String name = data.get("name");
+            String email = data.get("email");
+            String message = data.get("message");
+
+            writeLog("CONTACT API -> " + name + " | " + email + " | " + message);
+
+            sendJson(output, "{\"message\":\"Contact form received successfully\"}");
+            return;
+        }
+
+        sendJson(output, "{\"error\":\"API route not found\"}");
+    }
+
+    private static String readRequestBody(BufferedReader reader) throws IOException {
+        StringBuilder body = new StringBuilder();
+
+        while (reader.ready()) {
+            body.append((char) reader.read());
+        }
+
+        return body.toString();
+    }
+
+    private static Map<String, String> parseFormData(String body)
+            throws UnsupportedEncodingException {
+
+        Map<String, String> data = new HashMap<>();
+
+        String[] pairs = body.split("&");
+
+        for (String pair : pairs) {
+            String[] parts = pair.split("=");
+
+            if (parts.length == 2) {
+                String key = URLDecoder.decode(parts[0], "UTF-8");
+                String value = URLDecoder.decode(parts[1], "UTF-8");
+
+                data.put(key, value);
+            }
+        }
+
+        return data;
     }
 
     private static String resolvePath(String path) {

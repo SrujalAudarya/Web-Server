@@ -7,3 +7,32 @@ Request: GET /script.js HTTP/1.1
 Request: GET /contact HTTP/1.1
 Request: GET /about HTTP/1.1
 Request: GET /style.css HTTP/1.1
+Request: GET / HTTP/1.1
+Request: GET /about HTTP/1.1
+Request: GET /style.css HTTP/1.1
+Request: POST /contact HTTP/1.1
+POST /contact Body: Host: localhost:8080
+Connection: keep-alive
+Content-Length: 62
+Cache-Control: max-age=0
+sec-ch-ua: "Chromium";v="148", "Brave";v="148", "Not/A)Brand";v="99"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36
+Origin: http://localhost:8080
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+Sec-GPC: 1
+Accept-Language: en-GB,en;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: http://localhost:8080/about
+Accept-Encoding: gzip, deflate, br, zstd
+
+name=sss&email=srujalaudarya249%40gmail.com&message=fdfdgdfghh
+Request: GET /contact HTTP/1.1
+Request: GET /api/status HTTP/1.1
+Request: GET /api/users HTTP/1.1
