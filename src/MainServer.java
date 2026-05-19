@@ -2,19 +2,20 @@
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
+import java.util.Properties;
 
 public class MainServer {
 
-    private static final int PORT = 8080;
+    private static final Properties props = new Properties();
 
-    // Developer/server UI files
-    private static final String WWW_FOLDER = "www";
-
-    // User-created website files
-    private static final String HTDOCS_FOLDER = "htdocs";
+    private static int PORT;
+    private static String WWW_FOLDER;
+    private static String HTDOCS_FOLDER;
 
     public static void main(String[] args) {
         try {
+            loadConfig();
+
             ServerSocket serverSocket = new ServerSocket(PORT);
 
             System.out.println("Server started...");
@@ -27,6 +28,29 @@ public class MainServer {
             }
 
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void loadConfig() {
+        try {
+
+            FileInputStream fis
+                    = new FileInputStream("config/server.properties");
+
+            props.load(fis);
+
+            PORT = Integer.parseInt(
+                    props.getProperty("server.port")
+            );
+
+            WWW_FOLDER
+                    = props.getProperty("server.www");
+
+            HTDOCS_FOLDER
+                    = props.getProperty("server.htdocs");
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -47,6 +71,7 @@ public class MainServer {
             }
 
             System.out.println("Request: " + requestLine);
+            writeLog("Request: " + requestLine);
 
             String[] requestParts = requestLine.split(" ");
             String path = requestParts[1];
@@ -193,6 +218,16 @@ public class MainServer {
         output.write(header.getBytes());
         output.write(html.getBytes());
         output.flush();
+    }
+
+    private static void writeLog(String message) {
+        try {
+            FileWriter writer = new FileWriter("logs/access.log", true);
+            writer.write(message + "\n");
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static String getContentType(String fileName) {
