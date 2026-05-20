@@ -236,3 +236,28 @@ Request: DELETE /api/products HTTP/1.1
 DELETE /api/products -> {
   "id": 3
 }
+Request: GET / HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products/1 HTTP/1.1
+Request: POST /api/products/1 HTTP/1.1
+POST /api/products/1 -> {
+    "id": 2,
+    "name": "Mouse",
+    "price": 2000
+},
+{
+    "id": 3,
+    "name": "Keyboard",
+    "price": 5000
+}
+Request: GET /api/products/1 HTTP/1.1
+Request: GET /api/products/1 HTTP/1.1
+Request: GET /api/products/ HTTP/1.1
+Request: GET /api/products/ HTTP/1.1
+Request: GET /api/products/ HTTP/1.1
+Request: GET /api/products/ HTTP/1.1
+Request: GET /api/products/ HTTP/1.1
+Request: GET /api/products/2 HTTP/1.1
+Request: GET /api/products/3 HTTP/1.1
+Request: GET /api/products/1 HTTP/1.1
+Request: GET /api/products HTTP/1.1

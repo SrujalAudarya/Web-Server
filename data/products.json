@@ -2,5 +2,15 @@
 {
     "id": 1,
     "name": "Laptop",
-    "price": 55000}
+    "price": 55000},
+{
+    "id": 2,
+    "name": "Mouse",
+    "price": 2000
+},
+{
+    "id": 3,
+    "name": "Keyboard",
+    "price": 5000
+}
 ]

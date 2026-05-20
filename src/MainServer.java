@@ -233,8 +233,15 @@ public class MainServer {
             String routeMethod = routeInfo[0].trim();
             String routePath = routeInfo[1].trim();
 
-            if (method.equals(routeMethod)
-                    && path.equals(routePath)) {
+            boolean exactMatch
+                    = method.equals(routeMethod)
+                    && path.equals(routePath);
+
+            boolean idMatch
+                    = method.equals(routeMethod)
+                    && path.startsWith(routePath + "/");
+
+            if (exactMatch || idMatch) {
 
                 File dataFile
                         = new File("data/" + dataFileName);
@@ -257,6 +264,54 @@ public class MainServer {
                     String json
                             = Files.readString(dataFile.toPath());
 
+                    // GET BY ID
+                    if (path.startsWith(routePath + "/")) {
+
+                        String id
+                                = path.substring(
+                                        (routePath + "/").length()
+                                );
+
+                        String[] objects
+                                = splitJsonObjects(json);
+
+                        for (String obj : objects) {
+
+                            obj = obj.trim();
+
+                            if (!obj.startsWith("{")) {
+                                obj = "{" + obj;
+                            }
+
+                            if (!obj.endsWith("}")) {
+                                obj = obj + "}";
+                            }
+
+                            Map<String, String> data
+                                    = parseJsonBody(obj);
+
+                            String objectId
+                                    = data.get("id");
+
+                            if (objectId != null
+                                    && objectId.equals(id)) {
+
+                                sendJson(output, obj);
+
+                                routeReader.close();
+                                return true;
+                            }
+                        }
+
+                        sendJson(output,
+                                "{\"error\":\"Record not found\"}"
+                        );
+
+                        routeReader.close();
+                        return true;
+                    }
+
+                    // NORMAL GET
                     sendJson(output, json);
 
                     routeReader.close();
@@ -588,6 +643,30 @@ public class MainServer {
         }
 
         return data;
+    }
+
+    private static String[] splitJsonObjects(String jsonArray) {
+
+        jsonArray = jsonArray.trim();
+
+        // remove [
+        if (jsonArray.startsWith("[")) {
+            jsonArray = jsonArray.substring(1);
+        }
+
+        // remove ]
+        if (jsonArray.endsWith("]")) {
+            jsonArray = jsonArray.substring(0, jsonArray.length() - 1);
+        }
+
+        jsonArray = jsonArray.trim();
+
+        // empty array
+        if (jsonArray.isEmpty()) {
+            return new String[0];
+        }
+
+        return jsonArray.split("\\},\\s*\\{");
     }
 
     private static String resolvePath(String path) {
