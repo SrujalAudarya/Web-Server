@@ -52,8 +52,9 @@ public class MainServer {
 
     private static void handleClient(Socket socket) {
         try {
-            InputStream input = socket.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream())
+            );
 
             OutputStream output = socket.getOutputStream();
 
@@ -123,7 +124,6 @@ public class MainServer {
 
     private static Map<String, String> readHeaders(BufferedReader reader) throws IOException {
         Map<String, String> headers = new HashMap<>();
-
         String line;
 
         while ((line = reader.readLine()) != null && !line.isEmpty()) {
@@ -148,114 +148,12 @@ public class MainServer {
             OutputStream output
     ) throws IOException {
 
-        if (handleDynamicApiRoute(method, path, reader, headers, output)) {
-            return;
-        }
-
         if (method.equals("GET") && path.equals("/api/status")) {
             sendJson(output, "{\"status\":\"running\",\"server\":\"MyJavaServer\"}");
             return;
         }
 
-        // if (method.equals("GET") && path.equals("/api/users")) {
-        //     sendJson(output, "[{\"id\":1,\"name\":\"Srujal\"},{\"id\":2,\"name\":\"Admin\"}]");
-        //     return;
-        // }
-        if (method.equals("GET") && path.startsWith("/api/users/")) {
-
-            String id = path.substring("/api/users/".length());
-
-            sendJson(output,
-                    "{\"id\":\"" + id + "\",\"name\":\"User " + id + "\"}"
-            );
-
-            return;
-        }
-
-        if (method.equals("POST") && path.equals("/api/users")) {
-            String body = readRequestBody(reader, headers);
-            Map<String, String> data = parseBody(body, headers);
-
-            String name = data.get("name");
-            String email = data.get("email");
-
-            writeLog("CREATE USER -> " + name + " | " + email);
-
-            sendJson(output,
-                    "{\"message\":\"User created successfully\",\"name\":\""
-                    + name + "\",\"email\":\"" + email + "\"}"
-            );
-            return;
-        }
-
-        if (method.equals("POST") && path.equals("/api/register")) {
-            String body = readRequestBody(reader, headers);
-            Map<String, String> data = parseBody(body, headers);
-
-            String name = data.get("name");
-            String email = data.get("email");
-
-            sendJson(output,
-                    "{\"message\":\"Register API called\",\"name\":\""
-                    + name + "\",\"email\":\"" + email + "\"}"
-            );
-            return;
-        }
-
-        if (method.equals("POST") && path.equals("/api/login")) {
-            String body = readRequestBody(reader, headers);
-            Map<String, String> data = parseBody(body, headers);
-
-            String email = data.get("email");
-            String password = data.get("password");
-
-            writeLog("LOGIN ATTEMPT -> " + email);
-
-            if ("admin@gmail.com".equals(email) && "12345".equals(password)) {
-                sendJson(output, "{\"success\":true,\"message\":\"Login successful\"}");
-            } else {
-                sendJson(output, "{\"success\":false,\"message\":\"Invalid login\"}");
-            }
-            return;
-        }
-
-        if (method.equals("POST") && path.equals("/api/contact")) {
-            String body = readRequestBody(reader, headers);
-            Map<String, String> data = parseBody(body, headers);
-
-            String name = data.get("name");
-            String email = data.get("email");
-            String message = data.get("message");
-
-            writeLog("CONTACT API -> " + name + " | " + email + " | " + message);
-
-            sendJson(output, "{\"message\":\"Contact form received successfully\"}");
-            return;
-        }
-
-        if (method.equals("PUT") && path.equals("/api/users")) {
-            String body = readRequestBody(reader, headers);
-            Map<String, String> data = parseBody(body, headers);
-
-            String id = data.get("id");
-            String name = data.get("name");
-
-            sendJson(output,
-                    "{\"message\":\"User updated successfully\",\"id\":\""
-                    + id + "\",\"name\":\"" + name + "\"}"
-            );
-            return;
-        }
-
-        if (method.equals("DELETE") && path.equals("/api/users")) {
-            String body = readRequestBody(reader, headers);
-            Map<String, String> data = parseBody(body, headers);
-
-            String id = data.get("id");
-
-            sendJson(output,
-                    "{\"message\":\"User deleted successfully\",\"id\":\"" + id + "\"}"
-            );
+        if (handleDynamicApiRoute(method, path, reader, headers, output)) {
             return;
         }
 
@@ -276,9 +174,7 @@ public class MainServer {
             return false;
         }
 
-        BufferedReader routeReader = new BufferedReader(
-                new FileReader(routesFile)
-        );
+        BufferedReader routeReader = new BufferedReader(new FileReader(routesFile));
 
         String line;
 
@@ -318,59 +214,56 @@ public class MainServer {
                     return true;
                 }
 
-                // GET
                 if (method.equals("GET")) {
-
                     String json = Files.readString(dataFile.toPath());
-
                     sendJson(output, json);
 
                     routeReader.close();
                     return true;
                 }
 
-                // POST
                 if (method.equals("POST")) {
-
                     String body = readRequestBody(reader, headers);
 
-                    writeLog("POST -> " + body);
+                    Map<String, String> data = parseBody(body, headers);
+
+                    writeLog("POST " + path + " -> " + data.toString());
 
                     sendJson(output,
-                            "{\"message\":\"POST request successful\",\"data\":"
-                            + "\"" + body.replace("\"", "\\\"") + "\"}"
+                            "{\"message\":\"POST request successful\",\"data\":\""
+                            + escapeJson(data.toString()) + "\"}"
                     );
 
                     routeReader.close();
                     return true;
                 }
 
-                // PUT
                 if (method.equals("PUT")) {
-
                     String body = readRequestBody(reader, headers);
 
-                    writeLog("PUT -> " + body);
+                    Map<String, String> data = parseBody(body, headers);
+
+                    writeLog("PUT " + path + " -> " + data.toString());
 
                     sendJson(output,
-                            "{\"message\":\"PUT request successful\",\"data\":"
-                            + "\"" + body.replace("\"", "\\\"") + "\"}"
+                            "{\"message\":\"PUT request successful\",\"data\":\""
+                            + escapeJson(data.toString()) + "\"}"
                     );
 
                     routeReader.close();
                     return true;
                 }
 
-                // DELETE
                 if (method.equals("DELETE")) {
-
                     String body = readRequestBody(reader, headers);
 
-                    writeLog("DELETE -> " + body);
+                    Map<String, String> data = parseBody(body, headers);
+
+                    writeLog("DELETE " + path + " -> " + data.toString());
 
                     sendJson(output,
-                            "{\"message\":\"DELETE request successful\",\"data\":"
-                            + "\"" + body.replace("\"", "\\\"") + "\"}"
+                            "{\"message\":\"DELETE request successful\",\"data\":\""
+                            + escapeJson(data.toString()) + "\"}"
                     );
 
                     routeReader.close();
@@ -586,6 +479,14 @@ public class MainServer {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static String escapeJson(String text) {
+        return text
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 
     private static String getContentType(String fileName) {

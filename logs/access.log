@@ -99,3 +99,12 @@ Request: GET /api/products HTTP/1.1
 Request: GET /api/products HTTP/1.1
 Request: GET /api/products HTTP/1.1
 Request: GET /api/products HTTP/1.1
+Request: GET / HTTP/1.1
+Request: GET /products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET / HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /server HTTP/1.1
+Request: GET /script.js HTTP/1.1
+Request: GET /style.css HTTP/1.1
+Request: GET /style.css HTTP/1.1
