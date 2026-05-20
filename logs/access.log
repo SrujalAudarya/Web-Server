@@ -108,3 +108,131 @@ Request: GET /server HTTP/1.1
 Request: GET /script.js HTTP/1.1
 Request: GET /style.css HTTP/1.1
 Request: GET /style.css HTTP/1.1
+Request: GET / HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {price=55000, name=Laptop, id=3}
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {price=55000, name=Laptop, id=3}
+Request: GET /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {price=55000, name=Laptop, id=3}
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {price=55000, name=Laptop, id=3}
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET / HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {
+  "id": 3,
+  "name": "Laptop",
+  "price": 55000
+}
+Request: PUT /api/products HTTP/1.1
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {price=55000, name=Laptop, id=3}
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {price=3000, name=Keyboard, id=3}
+Request: GET /api/products HTTP/1.1
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {price=3000, name=Keyboard, id=3}
+Request: GET /api/products HTTP/1.1
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {
+  "id": 3,
+  "name": "Keyboard",
+  "price": 3000
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 3,
+  "name": "Keyboard",
+  "price": 3000
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 3,
+  "name": "Keyboard",
+  "price": 3000
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> id=2
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> id=2
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2,
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2,
+}
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2,
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2,
+}
+Request: GET /api/products HTTP/1.1
+Request: GET /api/products HTTP/1.1
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {
+  "id": 2,
+}
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {
+  "id": 2
+}
+Request: PUT /api/products HTTP/1.1
+PUT /api/products -> {
+  "id": 2
+}
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {
+  "id": 3,
+  "name": "Keyboard",
+  "price": 3000
+}
+Request: GET /api/products HTTP/1.1
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2
+}
+Request: POST /api/products HTTP/1.1
+POST /api/products -> {
+  "id": 3,
+  "name": "Keyboard",
+  "price": 3000
+}
+Request: GET /api/products HTTP/1.1
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 2
+}
+Request: DELETE /api/products HTTP/1.1
+DELETE /api/products -> {
+  "id": 3
+}

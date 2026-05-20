@@ -1,3 +1,6 @@
 GET /api/products = products.json
+POST /api/products = products.json
+PUT /api/products = products.json
+DELETE /api/products = products.json
 GET /api/students = students.json
 GET /api/books = books.json

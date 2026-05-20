@@ -1,12 +1,6 @@
 [
-  {
+{
     "id": 1,
     "name": "Laptop",
-    "price": 55000
-  },
-  {
-    "id": 2,
-    "name": "Mouse",
-    "price": 500
-  }
+    "price": 55000}
 ]
