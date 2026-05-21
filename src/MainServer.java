@@ -58,6 +58,8 @@ public class MainServer {
                     new InputStreamReader(socket.getInputStream())
             );
 
+            InputStream input = socket.getInputStream();
+
             OutputStream output = socket.getOutputStream();
 
             String requestLine = reader.readLine();
@@ -82,7 +84,7 @@ public class MainServer {
             }
 
             if (path.startsWith("/api/")) {
-                handleApiRequest(method, path, reader, headers, output);
+                handleApiRequest(method, path, reader, input, headers, output);
                 socket.close();
                 return;
             }
@@ -165,9 +167,102 @@ public class MainServer {
             String method,
             String path,
             BufferedReader reader,
+            InputStream input,
             Map<String, String> headers,
             OutputStream output
     ) throws IOException {
+
+        if (method.equals("POST")
+                && path.equals("/api/upload")) {
+
+            byte[] fileBytes
+                    = readRequestBodyBytes(input, headers);
+
+            File uploadFolder = new File("uploads");
+
+            if (!uploadFolder.exists()) {
+                uploadFolder.mkdirs();
+            }
+
+            String fileName = "uploaded-file.bin";
+
+            Files.write(
+                    Paths.get("uploads/" + fileName),
+                    fileBytes
+            );
+
+            sendJson(output,
+                    "{\"message\":\"File uploaded successfully\"}"
+            );
+
+            return;
+        }
+
+        if (method.equals("POST") && path.equals("/api/upload-file")) {
+
+            String contentType = headers.getOrDefault("content-type", "");
+
+            if (!contentType.contains("multipart/form-data")) {
+                sendJson(output, "{\"error\":\"Only multipart/form-data supported\"}");
+                return;
+            }
+
+            String boundary = "--" + contentType.substring(contentType.indexOf("boundary=") + 9);
+
+            byte[] bodyBytes = readRequestBodyBytes(input, headers);
+
+            String bodyText = new String(bodyBytes, StandardCharsets.ISO_8859_1);
+
+            String fileName = "uploaded-file.bin";
+
+            int fileNameIndex = bodyText.indexOf("filename=\"");
+
+            if (fileNameIndex != -1) {
+                int start = fileNameIndex + 10;
+                int end = bodyText.indexOf("\"", start);
+                fileName = bodyText.substring(start, end);
+            }
+
+            int headerEnd = bodyText.indexOf("\r\n\r\n");
+
+            if (headerEnd == -1) {
+                sendJson(output, "{\"error\":\"Invalid multipart header\"}");
+                return;
+            }
+
+            int fileStart = headerEnd + 4;
+
+            byte[] boundaryBytes = ("\r\n" + boundary).getBytes(StandardCharsets.ISO_8859_1);
+
+            int fileEnd = indexOf(bodyBytes, boundaryBytes, fileStart);
+
+            if (fileEnd == -1) {
+                sendJson(output, "{\"error\":\"Invalid multipart ending\"}");
+                return;
+            }
+
+            byte[] fileBytes = new byte[fileEnd - fileStart];
+
+            System.arraycopy(bodyBytes, fileStart, fileBytes, 0, fileBytes.length);
+
+            File uploadFolder = new File("uploads");
+
+            if (!uploadFolder.exists()) {
+                uploadFolder.mkdirs();
+            }
+
+            Files.write(
+                    Paths.get("uploads/" + fileName),
+                    fileBytes
+            );
+
+            sendJson(output,
+                    "{\"message\":\"File uploaded successfully\",\"file\":\""
+                    + fileName + "\"}"
+            );
+
+            return;
+        }
 
         if (method.equals("GET")
                 && path.equals("/api/status")) {
@@ -626,6 +721,55 @@ public class MainServer {
         }
 
         return new String(bodyChars, 0, totalRead);
+    }
+
+    private static byte[] readRequestBodyBytes(
+            InputStream input,
+            Map<String, String> headers
+    ) throws IOException {
+
+        int contentLength = 0;
+
+        if (headers.containsKey("content-length")) {
+            contentLength = Integer.parseInt(headers.get("content-length"));
+        }
+
+        byte[] body = new byte[contentLength];
+
+        int totalRead = 0;
+
+        while (totalRead < contentLength) {
+            int read = input.read(body, totalRead, contentLength - totalRead);
+
+            if (read == -1) {
+                break;
+            }
+
+            totalRead += read;
+        }
+
+        return body;
+    }
+
+    private static int indexOf(byte[] source, byte[] target, int fromIndex) {
+
+        for (int i = fromIndex; i <= source.length - target.length; i++) {
+
+            boolean found = true;
+
+            for (int j = 0; j < target.length; j++) {
+                if (source[i + j] != target[j]) {
+                    found = false;
+                    break;
+                }
+            }
+
+            if (found) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private static Map<String, String> parseBody(
