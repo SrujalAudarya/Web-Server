@@ -266,3 +266,9 @@ Request: GET /server HTTP/1.1
 Request: GET /style.css HTTP/1.1
 Request: GET /script.js HTTP/1.1
 Request: GET /style.css HTTP/1.1
+Request: GET /api/products/2 HTTP/1.1
+Request: GET /api/products?id=1 HTTP/1.1
+Request: GET /api/products?id=1 HTTP/1.1
+Request: GET /api/products/1 HTTP/1.1
+Request: GET /api/products/1 HTTP/1.1
+Request: GET /api/products?id=2 HTTP/1.1
