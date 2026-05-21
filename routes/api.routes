@@ -4,3 +4,4 @@ PUT /api/products = products.json
 DELETE /api/products = products.json
 GET /api/students = students.json
 GET /api/books = books.json
+POST /api/books = books.json

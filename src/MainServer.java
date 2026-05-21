@@ -7,467 +7,351 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+public class MainServer {
 
+    private static final Properties props = new Properties();
 
-      public class MainServer {
+    private static final Map<String, String> sessions = new HashMap<>();
 
-        private static final Properties props = new Properties();
+    private static int PORT;
+    private static String WWW_FOLDER;
+    private static String HTDOCS_FOLDER;
 
-        private static int PORT;
-        private static String WWW_FOLDER;
-        private static String HTDOCS_FOLDER;
+    public static void main(String[] args) {
+        try {
+            loadConfig();
 
-        public static void main(String[] args) {
-            try {
-                loadConfig();
+            ServerSocket serverSocket = new ServerSocket(PORT);
 
-                ServerSocket serverSocket = new ServerSocket(PORT);
+            System.out.println("Server started...");
+            System.out.println("Open User Site: http://localhost:" + PORT);
+            System.out.println("Open Server Panel: http://localhost:" + PORT + "/server");
 
-                System.out.println("Server started...");
-                System.out.println("Open User Site: http://localhost:" + PORT);
-                System.out.println("Open Server Panel: http://localhost:" + PORT + "/server");
-
-                while (true) {
-                    Socket socket = serverSocket.accept();
-                    new Thread(() -> handleClient(socket)).start();
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
+            while (true) {
+                Socket socket = serverSocket.accept();
+                new Thread(() -> handleClient(socket)).start();
             }
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
 
-        private static void loadConfig() {
-            try {
-                FileInputStream fis = new FileInputStream("config/server.properties");
+    private static void loadConfig() {
+        try {
+            FileInputStream fis = new FileInputStream("config/server.properties");
 
-                props.load(fis);
+            props.load(fis);
 
-                PORT = Integer.parseInt(props.getProperty("server.port"));
-                WWW_FOLDER = props.getProperty("server.www");
-                HTDOCS_FOLDER = props.getProperty("server.htdocs");
+            PORT = Integer.parseInt(props.getProperty("server.port"));
+            WWW_FOLDER = props.getProperty("server.www");
+            HTDOCS_FOLDER = props.getProperty("server.htdocs");
 
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
 
-        private static void handleClient(Socket socket) {
-            try {
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(socket.getInputStream())
-                );
+    private static void handleClient(Socket socket) {
+        try {
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream())
+            );
 
-                OutputStream output = socket.getOutputStream();
+            OutputStream output = socket.getOutputStream();
 
-                String requestLine = reader.readLine();
+            String requestLine = reader.readLine();
 
-                if (requestLine == null || requestLine.isEmpty()) {
-                    socket.close();
-                    return;
-                }
-
-                System.out.println("Request: " + requestLine);
-                writeLog("Request: " + requestLine);
-
-                String[] requestParts = requestLine.split(" ");
-                String method = requestParts[0];
-                String path = requestParts[1];
-
-                Map<String, String> headers = readHeaders(reader);
-
-                if (!runMiddlewares(method, path, output)) {
-                    socket.close();
-                    return;
-                }
-
-                if (path.startsWith("/api/")) {
-                    handleApiRequest(method, path, reader, headers, output);
-                    socket.close();
-                    return;
-                }
-
-                if (path.equals("/user")) {
-                    String html = renderTemplate(
-                            "user.html",
-                            "User Page",
-                            "Welcome to dynamic HTML rendering!"
-                    );
-
-                    sendHtml(output, html);
-                    socket.close();
-                    return;
-                }
-
-                File file;
-
-                if (path.startsWith("/server")) {
-
-                    String serverPath = path.replaceFirst("/server", "");
-
-                    if (serverPath.equals("") || serverPath.equals("/")) {
-                        serverPath = "/index.html";
-                    }
-
-                    serverPath = resolvePath(serverPath);
-
-                    file = new File(WWW_FOLDER + serverPath);
-
-                } else {
-
-                    path = resolvePath(path);
-
-                    file = new File(HTDOCS_FOLDER + path);
-                }
-
-                if (file.exists() && !file.isDirectory()) {
-                    sendFile(output, file);
-                } else {
-                    send404(output);
-                }
-
+            if (requestLine == null || requestLine.isEmpty()) {
                 socket.close();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private static Map<String, String> readHeaders(
-                BufferedReader reader
-        ) throws IOException {
-
-            Map<String, String> headers = new HashMap<>();
-
-            String line;
-
-            while ((line = reader.readLine()) != null && !line.isEmpty()) {
-
-                int index = line.indexOf(":");
-
-                if (index != -1) {
-
-                    String key = line.substring(0, index)
-                            .trim()
-                            .toLowerCase();
-
-                    String value = line.substring(index + 1)
-                            .trim();
-
-                    headers.put(key, value);
-                }
+                return;
             }
 
-            return headers;
-        }
+            System.out.println("Request: " + requestLine);
+            writeLog("Request: " + requestLine);
 
-        private static void handleApiRequest(
-                String method,
-                String path,
-                BufferedReader reader,
-                Map<String, String> headers,
-                OutputStream output
-        ) throws IOException {
+            String[] requestParts = requestLine.split(" ");
+            String method = requestParts[0];
+            String path = requestParts[1];
 
-            if (method.equals("GET")
-                    && path.equals("/api/status")) {
+            Map<String, String> headers = readHeaders(reader);
 
-                sendJson(output,
-                        "{\"status\":\"running\",\"server\":\"MyJavaServer\"}"
+            if (!runMiddlewares(method, path, output)) {
+                socket.close();
+                return;
+            }
+
+            if (path.startsWith("/api/")) {
+                handleApiRequest(method, path, reader, headers, output);
+                socket.close();
+                return;
+            }
+
+            if (path.equals("/user")) {
+                String html = renderTemplate(
+                        "user.html",
+                        "User Page",
+                        "Welcome to dynamic HTML rendering!"
                 );
 
+                sendHtml(output, html);
+                socket.close();
                 return;
             }
 
-            if (handleDynamicApiRoute(
-                    method,
-                    path,
-                    reader,
-                    headers,
-                    output
-            )) {
-                return;
+            File file;
+
+            if (path.startsWith("/server")) {
+
+                String serverPath = path.replaceFirst("/server", "");
+
+                if (serverPath.equals("") || serverPath.equals("/")) {
+                    serverPath = "/index.html";
+                }
+
+                serverPath = resolvePath(serverPath);
+
+                file = new File(WWW_FOLDER + serverPath);
+
+            } else {
+
+                path = resolvePath(path);
+
+                file = new File(HTDOCS_FOLDER + path);
             }
+
+            if (file.exists() && !file.isDirectory()) {
+                sendFile(output, file);
+            } else {
+                send404(output);
+            }
+
+            socket.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static Map<String, String> readHeaders(
+            BufferedReader reader
+    ) throws IOException {
+
+        Map<String, String> headers = new HashMap<>();
+
+        String line;
+
+        while ((line = reader.readLine()) != null && !line.isEmpty()) {
+
+            int index = line.indexOf(":");
+
+            if (index != -1) {
+
+                String key = line.substring(0, index)
+                        .trim()
+                        .toLowerCase();
+
+                String value = line.substring(index + 1)
+                        .trim();
+
+                headers.put(key, value);
+            }
+        }
+
+        return headers;
+    }
+
+    private static void handleApiRequest(
+            String method,
+            String path,
+            BufferedReader reader,
+            Map<String, String> headers,
+            OutputStream output
+    ) throws IOException {
+
+        if (method.equals("GET")
+                && path.equals("/api/status")) {
 
             sendJson(output,
-                    "{\"error\":\"API route not found\"}"
+                    "{\"status\":\"running\",\"server\":\"MyJavaServer\"}"
             );
+
+            return;
         }
 
-        private static boolean handleDynamicApiRoute(
-                String method,
-                String path,
-                BufferedReader reader,
-                Map<String, String> headers,
-                OutputStream output
-        ) throws IOException {
+        if (method.equals("POST")
+                && path.equals("/api/login")) {
 
-            File routesFile = new File("routes/api.routes");
+            String sessionId
+                    = "SID" + System.currentTimeMillis();
 
-            if (!routesFile.exists()) {
-                return false;
-            }
+            sessions.put(sessionId, "admin");
 
-            BufferedReader routeReader = new BufferedReader(
-                    new FileReader(routesFile)
+            sendJsonWithCookie(
+                    output,
+                    "{\"message\":\"Login successful\"}",
+                    "SESSION_ID="
+                    + sessionId
+                    + "; Path=/; HttpOnly"
             );
 
-            String line;
+            return;
+        }
 
-            while ((line = routeReader.readLine()) != null) {
+        if (method.equals("GET")
+                && path.equals("/api/profile")) {
 
-                line = line.trim();
+            Map<String, String> cookies
+                    = parseCookies(headers);
 
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
+            String sessionId = cookies.get("SESSION_ID");
 
-                String[] parts = line.split("=");
+            String username = sessions.get(sessionId);
 
-                if (parts.length != 2) {
-                    continue;
-                }
+            if (username == null) {
 
-                String routePart = parts[0].trim();
-                String dataFileName = parts[1].trim();
+                sendJson(output,
+                        "{\"error\":\"Not logged in\"}"
+                );
 
-                String[] routeInfo = routePart.split(" ");
+            } else {
 
-                if (routeInfo.length != 2) {
-                    continue;
-                }
+                sendJson(output,
+                        "{\"username\":\"" + username + "\"}"
+                );
+            }
 
-                String routeMethod = routeInfo[0].trim();
-                String routePath = routeInfo[1].trim();
+            return;
+        }
 
-                boolean exactMatch
-                        = method.equals(routeMethod)
-                        && path.equals(routePath);
+        if (handleDynamicApiRoute(
+                method,
+                path,
+                reader,
+                headers,
+                output
+        )) {
+            return;
+        }
 
-                boolean idMatch
-                        = method.equals(routeMethod)
-                        && path.startsWith(routePath + "/");
+        sendJson(output,
+                "{\"error\":\"API route not found\"}"
+        );
+    }
 
-                if (exactMatch || idMatch) {
+    private static boolean handleDynamicApiRoute(
+            String method,
+            String path,
+            BufferedReader reader,
+            Map<String, String> headers,
+            OutputStream output
+    ) throws IOException {
 
-                    File dataFile
-                            = new File("data/" + dataFileName);
+        File routesFile = new File("routes/api.routes");
 
-                    if (!dataFile.exists()) {
+        if (!routesFile.exists()) {
+            return false;
+        }
 
-                        sendJson(output,
-                                "{\"error\":\"Data file not found\"}"
+        BufferedReader routeReader = new BufferedReader(
+                new FileReader(routesFile)
+        );
+
+        String line;
+
+        while ((line = routeReader.readLine()) != null) {
+
+            line = line.trim();
+
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+
+            String[] parts = line.split("=");
+
+            if (parts.length != 2) {
+                continue;
+            }
+
+            String routePart = parts[0].trim();
+            String dataFileName = parts[1].trim();
+
+            String[] routeInfo = routePart.split(" ");
+
+            if (routeInfo.length != 2) {
+                continue;
+            }
+
+            String routeMethod = routeInfo[0].trim();
+            String routePath = routeInfo[1].trim();
+
+            String cleanPath = path;
+
+            if (cleanPath.contains("?")) {
+                cleanPath
+                        = cleanPath.substring(
+                                0,
+                                cleanPath.indexOf("?")
                         );
+            }
 
-                        routeReader.close();
-                        return true;
+            boolean exactMatch
+                    = method.equals(routeMethod)
+                    && cleanPath.equals(routePath);
+
+            boolean idMatch
+                    = method.equals(routeMethod)
+                    && cleanPath.startsWith(routePath + "/");
+
+            if (exactMatch || idMatch) {
+
+                File dataFile
+                        = new File("data/" + dataFileName);
+
+                if (!dataFile.exists()) {
+
+                    File dataFolder = new File("data");
+
+                    if (!dataFolder.exists()) {
+                        dataFolder.mkdirs();
                     }
 
-                    // =========================
-                    // GET
-                    // =========================
-                    if (method.equals("GET")) {
+                    Files.writeString(dataFile.toPath(), "[]");
+                }
 
-                        String json
-                                = Files.readString(dataFile.toPath());
+                // =========================
+                // GET
+                // =========================
+                if (method.equals("GET")) {
 
-                        // GET BY ID
-                        if (path.startsWith(routePath + "/")) {
+                    String json
+                            = Files.readString(dataFile.toPath());
 
-                            String id
-                                    = path.substring(
-                                            (routePath + "/").length()
-                                    );
+                    // GET BY ID
+                    Map<String, String> queryParams
+                            = parseQueryParams(path);
 
-                            String[] objects
-                                    = splitJsonObjects(json);
+                    String queryId
+                            = queryParams.get("id");
 
-                            for (String obj : objects) {
+                    if (cleanPath.startsWith(routePath + "/")
+                            || queryId != null) {
 
-                                obj = obj.trim();
+                        String id;
 
-                                if (!obj.startsWith("{")) {
-                                    obj = "{" + obj;
-                                }
+                        if (queryId != null) {
 
-                                if (!obj.endsWith("}")) {
-                                    obj = obj + "}";
-                                }
+                            id = queryId;
 
-                                Map<String, String> data
-                                        = parseJsonBody(obj);
-
-                                String objectId
-                                        = data.get("id");
-
-                                if (objectId != null
-                                        && objectId.equals(id)) {
-
-                                    sendJson(output, obj);
-
-                                    routeReader.close();
-                                    return true;
-                                }
-                            }
-
-                            sendJson(output,
-                                    "{\"error\":\"Record not found\"}"
-                            );
-
-                            routeReader.close();
-                            return true;
-                        }
-
-                        // NORMAL GET
-                        sendJson(output, json);
-
-                        routeReader.close();
-                        return true;
-                    }
-
-                    // =========================
-                    // POST
-                    // =========================
-                    if (method.equals("POST")) {
-
-                        String postBody
-                                = readRequestBody(reader, headers)
-                                        .trim();
-
-                        String existingJson
-                                = Files.readString(dataFile.toPath())
-                                        .trim();
-
-                        if (existingJson.isEmpty()) {
-                            existingJson = "[]";
-                        }
-
-                        existingJson
-                                = existingJson.substring(
-                                        0,
-                                        existingJson.length() - 1
-                                ).trim();
-
-                        if (!existingJson.equals("[")) {
-                            existingJson += ",";
-                        }
-
-                        existingJson
-                                += "\n" + postBody + "\n]";
-
-                        Files.writeString(
-                                dataFile.toPath(),
-                                existingJson
-                        );
-
-                        writeLog(
-                                "POST " + path + " -> " + postBody
-                        );
-
-                        sendJson(output,
-                                "{\"message\":\"Data added successfully\"}"
-                        );
-
-                        routeReader.close();
-                        return true;
-                    }
-
-                    // =========================
-                    // PUT
-                    // =========================
-                    if (method.equals("PUT")) {
-
-                        String putBody = readRequestBody(reader, headers).trim();
-
-                        Map<String, String> newData = parseBody(putBody, headers);
-
-                        String updateId = newData.get("id");
-
-                        String existingJson = Files.readString(dataFile.toPath()).trim();
-
-                        existingJson = existingJson.substring(1, existingJson.length() - 1).trim();
-
-                        String[] objects = existingJson.split("\\},\\s*\\{");
-
-                        StringBuilder updatedJson = new StringBuilder();
-                        updatedJson.append("[\n");
-
-                        boolean updated = false;
-
-                        for (int i = 0; i < objects.length; i++) {
-
-                            String obj = objects[i].trim();
-
-                            if (!obj.startsWith("{")) {
-                                obj = "{" + obj;
-                            }
-
-                            if (!obj.endsWith("}")) {
-                                obj = obj + "}";
-                            }
-
-                            Map<String, String> oldData = parseJsonBody(obj);
-
-                            String oldId = oldData.get("id");
-
-                            if (oldId != null && oldId.equals(updateId)) {
-
-                                updatedJson.append(putBody);
-                                updated = true;
-
-                            } else {
-
-                                updatedJson.append(obj);
-                            }
-
-                            if (i < objects.length - 1) {
-                                updatedJson.append(",\n");
-                            }
-                        }
-
-                        updatedJson.append("\n]");
-
-                        if (updated) {
-                            Files.writeString(dataFile.toPath(), updatedJson.toString());
-
-                            sendJson(output,
-                                    "{\"message\":\"Data updated successfully\",\"id\":\""
-                                    + updateId + "\"}"
-                            );
                         } else {
-                            sendJson(output,
-                                    "{\"error\":\"Record not found\",\"id\":\""
-                                    + updateId + "\"}"
+
+                            id = cleanPath.substring(
+                                    (routePath + "/").length()
                             );
                         }
 
-                        writeLog("PUT " + path + " -> " + putBody);
-
-                        routeReader.close();
-                        return true;
-                    }
-                    // =========================
-                    // DELETE
-                    // =========================
-                    if (method.equals("DELETE")) {
-
-                        String deleteBody = readRequestBody(reader, headers).trim();
-
-                        Map<String, String> deleteData = parseBody(deleteBody, headers);
-
-                        String deleteId = deleteData.get("id");
-
-                        String existingJson = Files.readString(dataFile.toPath()).trim();
-
-                        existingJson = existingJson.substring(1, existingJson.length() - 1).trim();
-
-                        String[] objects = existingJson.split("\\},\\s*\\{");
-
-                        StringBuilder updatedJson = new StringBuilder();
-                        updatedJson.append("[\n");
-
-                        boolean deleted = false;
-                        int count = 0;
+                        String[] objects
+                                = splitJsonObjects(json);
 
                         for (String obj : objects) {
 
@@ -481,299 +365,564 @@ import java.util.Properties;
                                 obj = obj + "}";
                             }
 
-                            Map<String, String> oldData = parseJsonBody(obj);
+                            Map<String, String> data
+                                    = parseJsonBody(obj);
 
-                            String oldId = oldData.get("id");
+                            String objectId
+                                    = data.get("id");
 
-                            if (oldId != null && oldId.equals(deleteId)) {
-                                deleted = true;
-                                continue;
+                            if (objectId != null
+                                    && objectId.equals(id)) {
+
+                                sendJson(output, obj);
+
+                                routeReader.close();
+                                return true;
                             }
-
-                            if (count > 0) {
-                                updatedJson.append(",\n");
-                            }
-
-                            updatedJson.append(obj);
-                            count++;
                         }
 
-                        updatedJson.append("\n]");
-
-                        if (deleted) {
-                            Files.writeString(dataFile.toPath(), updatedJson.toString());
-
-                            sendJson(output,
-                                    "{\"message\":\"Data deleted successfully\",\"id\":\""
-                                    + deleteId + "\"}"
-                            );
-                        } else {
-                            sendJson(output,
-                                    "{\"error\":\"Record not found\",\"id\":\""
-                                    + deleteId + "\"}"
-                            );
-                        }
-
-                        writeLog("DELETE " + path + " -> " + deleteBody);
+                        sendJson(output,
+                                "{\"error\":\"Record not found\"}"
+                        );
 
                         routeReader.close();
                         return true;
                     }
-                }
-            }
 
-            routeReader.close();
-            return false;
-        }
+                    // NORMAL GET
+                    sendJson(output, json);
 
-        private static String readRequestBody(
-                BufferedReader reader,
-                Map<String, String> headers
-        ) throws IOException {
-
-            int contentLength = 0;
-
-            if (headers.containsKey("content-length")) {
-                contentLength = Integer.parseInt(
-                        headers.get("content-length")
-                );
-            }
-
-            char[] bodyChars = new char[contentLength];
-
-            int totalRead = 0;
-
-            while (totalRead < contentLength) {
-
-                int read = reader.read(
-                        bodyChars,
-                        totalRead,
-                        contentLength - totalRead
-                );
-
-                if (read == -1) {
-                    break;
+                    routeReader.close();
+                    return true;
                 }
 
-                totalRead += read;
-            }
+                // =========================
+                // POST
+                // =========================
+                if (method.equals("POST")) {
 
-            return new String(bodyChars, 0, totalRead);
+                    String postBody
+                            = readRequestBody(reader, headers)
+                                    .trim();
+
+                    String existingJson
+                            = Files.readString(dataFile.toPath())
+                                    .trim();
+
+                    if (existingJson.isEmpty()) {
+                        existingJson = "[]";
+                    }
+
+                    existingJson
+                            = existingJson.substring(
+                                    0,
+                                    existingJson.length() - 1
+                            ).trim();
+
+                    if (!existingJson.equals("[")) {
+                        existingJson += ",";
+                    }
+
+                    existingJson
+                            += "\n" + postBody + "\n]";
+
+                    Files.writeString(
+                            dataFile.toPath(),
+                            existingJson
+                    );
+
+                    writeLog(
+                            "POST " + path + " -> " + postBody
+                    );
+
+                    sendJson(output,
+                            "{\"message\":\"Data added successfully\"}"
+                    );
+
+                    routeReader.close();
+                    return true;
+                }
+
+                // =========================
+                // PUT
+                // =========================
+                if (method.equals("PUT")) {
+
+                    String putBody = readRequestBody(reader, headers).trim();
+
+                    Map<String, String> newData = parseBody(putBody, headers);
+
+                    String updateId = newData.get("id");
+
+                    String existingJson = Files.readString(dataFile.toPath()).trim();
+
+                    String[] objects = splitJsonObjects(existingJson);
+
+                    StringBuilder updatedJson = new StringBuilder();
+                    updatedJson.append("[\n");
+
+                    boolean updated = false;
+
+                    for (int i = 0; i < objects.length; i++) {
+
+                        String obj = objects[i].trim();
+
+                        if (!obj.startsWith("{")) {
+                            obj = "{" + obj;
+                        }
+
+                        if (!obj.endsWith("}")) {
+                            obj = obj + "}";
+                        }
+
+                        Map<String, String> oldData = parseJsonBody(obj);
+
+                        String oldId = oldData.get("id");
+
+                        if (oldId != null && oldId.equals(updateId)) {
+
+                            updatedJson.append(putBody);
+                            updated = true;
+
+                        } else {
+
+                            updatedJson.append(obj);
+                        }
+
+                        if (i < objects.length - 1) {
+                            updatedJson.append(",\n");
+                        }
+                    }
+
+                    updatedJson.append("\n]");
+
+                    if (updated) {
+                        Files.writeString(dataFile.toPath(), updatedJson.toString());
+
+                        sendJson(output,
+                                "{\"message\":\"Data updated successfully\",\"id\":\""
+                                + updateId + "\"}"
+                        );
+                    } else {
+                        sendJson(output,
+                                "{\"error\":\"Record not found\",\"id\":\""
+                                + updateId + "\"}"
+                        );
+                    }
+
+                    writeLog("PUT " + path + " -> " + putBody);
+
+                    routeReader.close();
+                    return true;
+                }
+                // =========================
+                // DELETE
+                // =========================
+                if (method.equals("DELETE")) {
+
+                    String deleteBody = readRequestBody(reader, headers).trim();
+
+                    Map<String, String> deleteData = parseBody(deleteBody, headers);
+
+                    String deleteId = deleteData.get("id");
+
+                    String existingJson = Files.readString(dataFile.toPath()).trim();
+
+                    String[] objects = splitJsonObjects(existingJson);
+
+                    StringBuilder updatedJson = new StringBuilder();
+                    updatedJson.append("[\n");
+
+                    boolean deleted = false;
+                    int count = 0;
+
+                    for (String obj : objects) {
+
+                        obj = obj.trim();
+
+                        if (!obj.startsWith("{")) {
+                            obj = "{" + obj;
+                        }
+
+                        if (!obj.endsWith("}")) {
+                            obj = obj + "}";
+                        }
+
+                        Map<String, String> oldData = parseJsonBody(obj);
+
+                        String oldId = oldData.get("id");
+
+                        if (oldId != null && oldId.equals(deleteId)) {
+                            deleted = true;
+                            continue;
+                        }
+
+                        if (count > 0) {
+                            updatedJson.append(",\n");
+                        }
+
+                        updatedJson.append(obj);
+                        count++;
+                    }
+
+                    updatedJson.append("\n]");
+
+                    if (deleted) {
+                        Files.writeString(dataFile.toPath(), updatedJson.toString());
+
+                        sendJson(output,
+                                "{\"message\":\"Data deleted successfully\",\"id\":\""
+                                + deleteId + "\"}"
+                        );
+                    } else {
+                        sendJson(output,
+                                "{\"error\":\"Record not found\",\"id\":\""
+                                + deleteId + "\"}"
+                        );
+                    }
+
+                    writeLog("DELETE " + path + " -> " + deleteBody);
+
+                    routeReader.close();
+                    return true;
+                }
+            }
         }
 
-        private static Map<String, String> parseBody(
-                String body,
-                Map<String, String> headers
-        ) throws UnsupportedEncodingException {
+        routeReader.close();
+        return false;
+    }
 
-            String contentType
-                    = headers.getOrDefault("content-type", "");
+    private static String readRequestBody(
+            BufferedReader reader,
+            Map<String, String> headers
+    ) throws IOException {
 
-            if (contentType.contains("application/json")) {
-                return parseJsonBody(body);
+        int contentLength = 0;
+
+        if (headers.containsKey("content-length")) {
+            contentLength = Integer.parseInt(
+                    headers.get("content-length")
+            );
+        }
+
+        char[] bodyChars = new char[contentLength];
+
+        int totalRead = 0;
+
+        while (totalRead < contentLength) {
+
+            int read = reader.read(
+                    bodyChars,
+                    totalRead,
+                    contentLength - totalRead
+            );
+
+            if (read == -1) {
+                break;
             }
 
-            if (contentType.contains(
-                    "application/x-www-form-urlencoded"
-            )) {
-                return parseFormData(body);
-            }
+            totalRead += read;
+        }
 
+        return new String(bodyChars, 0, totalRead);
+    }
+
+    private static Map<String, String> parseBody(
+            String body,
+            Map<String, String> headers
+    ) throws UnsupportedEncodingException {
+
+        String contentType
+                = headers.getOrDefault("content-type", "");
+
+        if (contentType.contains("application/json")) {
+            return parseJsonBody(body);
+        }
+
+        if (contentType.contains(
+                "application/x-www-form-urlencoded"
+        )) {
             return parseFormData(body);
         }
 
-        private static Map<String, String> parseFormData(
-                String body
-        ) throws UnsupportedEncodingException {
+        return parseFormData(body);
+    }
 
-            Map<String, String> data = new HashMap<>();
+    private static Map<String, String> parseFormData(
+            String body
+    ) throws UnsupportedEncodingException {
 
-            String[] pairs = body.split("&");
+        Map<String, String> data = new HashMap<>();
 
-            for (String pair : pairs) {
+        String[] pairs = body.split("&");
 
-                String[] parts = pair.split("=", 2);
+        for (String pair : pairs) {
 
-                if (parts.length == 2) {
+            String[] parts = pair.split("=", 2);
 
-                    String key = URLDecoder.decode(
-                            parts[0],
-                            StandardCharsets.UTF_8
-                    );
+            if (parts.length == 2) {
 
-                    String value = URLDecoder.decode(
-                            parts[1],
-                            StandardCharsets.UTF_8
-                    );
+                String key = URLDecoder.decode(
+                        parts[0],
+                        StandardCharsets.UTF_8
+                );
 
-                    data.put(key, value);
-                }
+                String value = URLDecoder.decode(
+                        parts[1],
+                        StandardCharsets.UTF_8
+                );
+
+                data.put(key, value);
             }
-
-            return data;
         }
 
-        private static Map<String, String> parseJsonBody(
-                String body
-        ) {
+        return data;
+    }
 
-            Map<String, String> data = new HashMap<>();
+    private static Map<String, String> parseJsonBody(
+            String body
+    ) {
 
-            body = body.trim();
+        Map<String, String> data = new HashMap<>();
 
-            if (body.startsWith("{")) {
-                body = body.substring(1);
-            }
+        body = body.trim();
 
-            if (body.endsWith("}")) {
-                body = body.substring(0, body.length() - 1);
-            }
-
-            String[] pairs = body.split(",");
-
-            for (String pair : pairs) {
-
-                String[] parts = pair.split(":", 2);
-
-                if (parts.length == 2) {
-
-                    String key = parts[0]
-                            .trim()
-                            .replace("\"", "");
-
-                    String value = parts[1]
-                            .trim()
-                            .replace("\"", "");
-
-                    data.put(key, value);
-                }
-            }
-
-            return data;
+        if (body.startsWith("{")) {
+            body = body.substring(1);
         }
 
-        private static String[] splitJsonObjects(String jsonArray) {
-
-            jsonArray = jsonArray.trim();
-
-            // remove [
-            if (jsonArray.startsWith("[")) {
-                jsonArray = jsonArray.substring(1);
-            }
-
-            // remove ]
-            if (jsonArray.endsWith("]")) {
-                jsonArray = jsonArray.substring(0, jsonArray.length() - 1);
-            }
-
-            jsonArray = jsonArray.trim();
-
-            // empty array
-            if (jsonArray.isEmpty()) {
-                return new String[0];
-            }
-
-            return jsonArray.split("\\},\\s*\\{");
+        if (body.endsWith("}")) {
+            body = body.substring(0, body.length() - 1);
         }
 
-        private static String resolvePath(String path) {
+        String[] pairs = body.split(",");
 
-            if (path.equals("/")) {
-                return "/index.html";
+        for (String pair : pairs) {
+
+            String[] parts = pair.split(":", 2);
+
+            if (parts.length == 2) {
+
+                String key = parts[0]
+                        .trim()
+                        .replace("\"", "");
+
+                String value = parts[1]
+                        .trim()
+                        .replace("\"", "");
+
+                data.put(key, value);
             }
+        }
 
-            if (path.contains("?")) {
-                path = path.substring(0, path.indexOf("?"));
+        return data;
+    }
+
+    private static String[] splitJsonObjects(String jsonArray) {
+
+        jsonArray = jsonArray.trim();
+
+        // remove [
+        if (jsonArray.startsWith("[")) {
+            jsonArray = jsonArray.substring(1);
+        }
+
+        // remove ]
+        if (jsonArray.endsWith("]")) {
+            jsonArray = jsonArray.substring(0, jsonArray.length() - 1);
+        }
+
+        jsonArray = jsonArray.trim();
+
+        // empty array
+        if (jsonArray.isEmpty()) {
+            return new String[0];
+        }
+
+        return jsonArray.split("\\},\\s*\\{");
+    }
+
+    private static Map<String, String> parseQueryParams(String path) {
+
+        Map<String, String> queryParams = new HashMap<>();
+
+        if (!path.contains("?")) {
+            return queryParams;
+        }
+
+        String queryString
+                = path.substring(path.indexOf("?") + 1);
+
+        String[] pairs = queryString.split("&");
+
+        for (String pair : pairs) {
+
+            String[] parts = pair.split("=", 2);
+
+            if (parts.length == 2) {
+
+                queryParams.put(
+                        parts[0],
+                        parts[1]
+                );
             }
+        }
 
-            if (!path.contains(".")
-                    && !path.endsWith("/")) {
+        return queryParams;
+    }
 
-                return path + ".html";
+    private static Map<String, String> parseCookies(
+            Map<String, String> headers
+    ) {
+
+        Map<String, String> cookies = new HashMap<>();
+
+        String cookieHeader
+                = headers.get("cookie");
+
+        if (cookieHeader == null) {
+            return cookies;
+        }
+
+        String[] cookiePairs
+                = cookieHeader.split(";");
+
+        for (String pair : cookiePairs) {
+
+            String[] parts
+                    = pair.trim().split("=", 2);
+
+            if (parts.length == 2) {
+
+                cookies.put(
+                        parts[0].trim(),
+                        parts[1].trim()
+                );
             }
-
-            return path;
         }
 
-        private static String renderTemplate(
-                String fileName,
-                String title,
-                String message
-        ) throws IOException {
+        return cookies;
+    }
 
-            String html = Files.readString(
-                    Paths.get(HTDOCS_FOLDER + "/" + fileName)
-            );
+    private static String resolvePath(String path) {
 
-            html = html.replace("{{title}}", title);
-            html = html.replace("{{message}}", message);
-
-            return html;
+        if (path.equals("/")) {
+            return "/index.html";
         }
 
-        private static void sendFile(
-                OutputStream output,
-                File file
-        ) throws IOException {
-
-            byte[] fileBytes
-                    = Files.readAllBytes(file.toPath());
-
-            String contentType
-                    = getContentType(file.getName());
-
-            String header
-                    = "HTTP/1.1 200 OK\r\n"
-                    + "Content-Type: " + contentType + "\r\n"
-                    + "Content-Length: " + fileBytes.length + "\r\n"
-                    + "\r\n";
-
-            output.write(header.getBytes());
-            output.write(fileBytes);
-            output.flush();
+        if (path.contains("?")) {
+            path = path.substring(0, path.indexOf("?"));
         }
 
-        private static void sendHtml(
-                OutputStream output,
-                String html
-        ) throws IOException {
+        if (!path.contains(".")
+                && !path.endsWith("/")) {
 
-            String header
-                    = "HTTP/1.1 200 OK\r\n"
-                    + "Content-Type: text/html\r\n"
-                    + "Content-Length: "
-                    + html.getBytes().length
-                    + "\r\n"
-                    + "\r\n";
-
-            output.write(header.getBytes());
-            output.write(html.getBytes());
-            output.flush();
+            return path + ".html";
         }
 
-        private static void sendJson(
-                OutputStream output,
-                String json
-        ) throws IOException {
+        return path;
+    }
 
-            String header
-                    = "HTTP/1.1 200 OK\r\n"
-                    + "Content-Type: application/json\r\n"
-                    + "Content-Length: "
-                    + json.getBytes().length
-                    + "\r\n"
-                    + "\r\n";
+    private static String renderTemplate(
+            String fileName,
+            String title,
+            String message
+    ) throws IOException {
 
-            output.write(header.getBytes());
-            output.write(json.getBytes());
-            output.flush();
-        }
+        String html = Files.readString(
+                Paths.get(HTDOCS_FOLDER + "/" + fileName)
+        );
 
-        private static void send404(
-                OutputStream output
-        ) throws IOException {
+        html = html.replace("{{title}}", title);
+        html = html.replace("{{message}}", message);
 
-            String html = """
+        return html;
+    }
+
+    private static void sendFile(
+            OutputStream output,
+            File file
+    ) throws IOException {
+
+        byte[] fileBytes
+                = Files.readAllBytes(file.toPath());
+
+        String contentType
+                = getContentType(file.getName());
+
+        String header
+                = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: " + contentType + "\r\n"
+                + "Content-Length: " + fileBytes.length + "\r\n"
+                + "\r\n";
+
+        output.write(header.getBytes());
+        output.write(fileBytes);
+        output.flush();
+    }
+
+    private static void sendHtml(
+            OutputStream output,
+            String html
+    ) throws IOException {
+
+        String header
+                = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: text/html\r\n"
+                + "Content-Length: "
+                + html.getBytes().length
+                + "\r\n"
+                + "\r\n";
+
+        output.write(header.getBytes());
+        output.write(html.getBytes());
+        output.flush();
+    }
+
+    private static void sendJson(
+            OutputStream output,
+            String json
+    ) throws IOException {
+
+        String header
+                = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: application/json\r\n"
+                + "Content-Length: "
+                + json.getBytes().length
+                + "\r\n"
+                + "\r\n";
+
+        output.write(header.getBytes());
+        output.write(json.getBytes());
+        output.flush();
+    }
+
+    private static void sendJsonWithCookie(
+            OutputStream output,
+            String json,
+            String cookie
+    ) throws IOException {
+
+        String header
+                = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: application/json\r\n"
+                + "Set-Cookie: " + cookie + "\r\n"
+                + "Content-Length: "
+                + json.getBytes().length
+                + "\r\n"
+                + "\r\n";
+
+        output.write(header.getBytes());
+        output.write(json.getBytes());
+        output.flush();
+    }
+
+    private static void send404(
+            OutputStream output
+    ) throws IOException {
+
+        String html = """
                 <html>
                 <body>
                     <h1>404 - Page Not Found</h1>
@@ -782,82 +931,74 @@ import java.util.Properties;
                 </html>
                 """;
 
-            String header
-                    = "HTTP/1.1 404 Not Found\r\n"
-                    + "Content-Type: text/html\r\n"
-                    + "Content-Length: "
-                    + html.getBytes().length
-                    + "\r\n"
-                    + "\r\n";
+        String header
+                = "HTTP/1.1 404 Not Found\r\n"
+                + "Content-Type: text/html\r\n"
+                + "Content-Length: "
+                + html.getBytes().length
+                + "\r\n"
+                + "\r\n";
 
-            output.write(header.getBytes());
-            output.write(html.getBytes());
-            output.flush();
-        }
-
-        private static void writeLog(String message) {
-
-            try {
-
-                File logsFolder = new File("logs");
-
-                if (!logsFolder.exists()) {
-                    logsFolder.mkdirs();
-                }
-
-                FileWriter writer
-                        = new FileWriter(
-                                "logs/access.log",
-                                true
-                        );
-
-                writer.write(message + "\n");
-
-                writer.close();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private static boolean runMiddlewares(
-                String method,
-                String path,
-                OutputStream output
-        ) throws IOException {
-
-            // LOGGER
-            System.out.println("[Middleware] " + method + " " + path);
-
-            // BLOCK ADMIN API
-            if (path.startsWith("/api/admin")) {
-
-                sendJson(output,
-                        "{\"error\":\"Unauthorized access\"}"
-                );
-
-                return false;
-            }
-
-            return true;
+        output.write(header.getBytes());
+        output.write(html.getBytes());
+        output.flush();
     }
 
-    
+    private static void writeLog(String message) {
 
-        
+        try {
 
-        private static String escapeJson(String text) {
+            File logsFolder = new File("logs");
 
-            return text
-                    .replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r");
+            if (!logsFolder.exists()) {
+                logsFolder.mkdirs();
+            }
+
+            FileWriter writer
+                    = new FileWriter(
+                            "logs/access.log",
+                            true
+                    );
+
+            writer.write(message + "\n");
+
+            writer.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static boolean runMiddlewares(
+            String method,
+            String path,
+            OutputStream output
+    ) throws IOException {
+
+        // LOGGER
+        System.out.println("[Middleware] " + method + " " + path);
+
+        // BLOCK ADMIN API
+        if (path.startsWith("/api/admin")) {
+
+            sendJson(output,
+                    "{\"error\":\"Unauthorized access\"}"
+            );
+
+            return false;
         }
 
-    
+        return true;
+    }
 
-    
+    private static String escapeJson(String text) {
+
+        return text
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+    }
 
     private static String getContentType(
             String fileName
