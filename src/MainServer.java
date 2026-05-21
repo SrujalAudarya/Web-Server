@@ -30,6 +30,8 @@ public class MainServer {
                 new Thread(() -> handleClient(socket)).start();
             }
 
+
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -233,13 +235,24 @@ public class MainServer {
             String routeMethod = routeInfo[0].trim();
             String routePath = routeInfo[1].trim();
 
-            boolean exactMatch
-                    = method.equals(routeMethod)
-                    && path.equals(routePath);
+String cleanPath = path;
 
-            boolean idMatch
-                    = method.equals(routeMethod)
-                    && path.startsWith(routePath + "/");
+if (cleanPath.contains("?")) {
+    cleanPath =
+            cleanPath.substring(
+                    0,
+                    cleanPath.indexOf("?")
+            );
+}
+
+boolean exactMatch =
+        method.equals(routeMethod)
+                && cleanPath.equals(routePath);
+
+boolean idMatch =
+        method.equals(routeMethod)
+                && cleanPath.startsWith(routePath + "/");
+
 
             if (exactMatch || idMatch) {
 
@@ -265,13 +278,29 @@ public class MainServer {
                             = Files.readString(dataFile.toPath());
 
                     // GET BY ID
-                    if (path.startsWith(routePath + "/")) {
+                    Map<String, String> queryParams =
+        parseQueryParams(path);
 
-                        String id
-                                = path.substring(
-                                        (routePath + "/").length()
-                                );
+String queryId =
+        queryParams.get("id");
 
+if (cleanPath.startsWith(routePath + "/")
+        || queryId != null) {
+
+
+
+                        String id;
+
+if (queryId != null) {
+
+    id = queryId;
+
+} else {
+
+    id = cleanPath.substring(
+            (routePath + "/").length()
+    );
+}
                         String[] objects
                                 = splitJsonObjects(json);
 
@@ -668,6 +697,35 @@ public class MainServer {
 
         return jsonArray.split("\\},\\s*\\{");
     }
+
+    private static Map<String, String> parseQueryParams(String path) {
+
+    Map<String, String> queryParams = new HashMap<>();
+
+    if (!path.contains("?")) {
+        return queryParams;
+    }
+
+    String queryString =
+            path.substring(path.indexOf("?") + 1);
+
+    String[] pairs = queryString.split("&");
+
+    for (String pair : pairs) {
+
+        String[] parts = pair.split("=", 2);
+
+        if (parts.length == 2) {
+
+            queryParams.put(
+                    parts[0],
+                    parts[1]
+            );
+        }
+    }
+
+    return queryParams;
+}
 
     private static String resolvePath(String path) {
 
