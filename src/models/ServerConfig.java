@@ -1,31 +1,34 @@
-package models;
+package config;
 
 public class ServerConfig {
 
     private int port;
+
     private String wwwFolder;
+
     private String htdocsFolder;
 
-    public ServerConfig(
-            int port,
-            String wwwFolder,
-            String htdocsFolder
-    ){
-
-        this.port=port;
-        this.wwwFolder=wwwFolder;
-        this.htdocsFolder=htdocsFolder;
-    }
-
-    public int getPort(){
+    public int getPort() {
         return port;
     }
 
-    public String getWwwFolder(){
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public String getWwwFolder() {
         return wwwFolder;
     }
 
-    public String getHtdocsFolder(){
+    public void setWwwFolder(String wwwFolder) {
+        this.wwwFolder = wwwFolder;
+    }
+
+    public String getHtdocsFolder() {
         return htdocsFolder;
+    }
+
+    public void setHtdocsFolder(String htdocsFolder) {
+        this.htdocsFolder = htdocsFolder;
     }
 }
