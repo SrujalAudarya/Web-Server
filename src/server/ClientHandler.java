@@ -4,6 +4,7 @@ import config.ServerConfig;
 
 import handlers.ApiHandler;
 import handlers.FileHandler;
+import handlers.MiddlewareHandler;
 
 import utils.HttpUtil;
 import utils.LoggerUtil;
@@ -67,6 +68,15 @@ public class ClientHandler implements Runnable {
 
             Map<String, String> headers
                     = HttpUtil.readHeaders(reader);
+
+            if (!MiddlewareHandler.runMiddlewares(
+                    method,
+                    path,
+                    output
+            )) {
+                socket.close();
+                return;
+            }
 
             // =========================
             // API REQUESTS
