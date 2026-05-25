@@ -10,7 +10,8 @@ src/config/*.java ^
 src/models/*.java ^
 src/utils/*.java ^
 src/handlers/*.java ^
-src/server/*.java
+src/server/*.java ^
+src/database/*.java
 
 if %errorlevel% neq 0 (
     echo.

@@ -1,17 +1,14 @@
 package server;
 
-import config.ServerConfig;
-
 import handlers.ApiHandler;
 import handlers.FileHandler;
 import handlers.MiddlewareHandler;
-
-import utils.HttpUtil;
-import utils.LoggerUtil;
-
 import java.io.*;
 import java.net.Socket;
 import java.util.Map;
+import models.ServerConfig;
+import utils.HttpUtil;
+import utils.LoggerUtil;
 
 public class ClientHandler implements Runnable {
 

@@ -1,12 +1,14 @@
-package config;
+package models;
 
 public class ServerConfig {
 
     private int port;
 
-    private String wwwFolder;
-
     private String htdocsFolder;
+
+    private String mysqlUrl;
+    private String mysqlUser;
+    private String mysqlPassword;
 
     public int getPort() {
         return port;
@@ -16,19 +18,35 @@ public class ServerConfig {
         this.port = port;
     }
 
-    public String getWwwFolder() {
-        return wwwFolder;
-    }
-
-    public void setWwwFolder(String wwwFolder) {
-        this.wwwFolder = wwwFolder;
-    }
-
     public String getHtdocsFolder() {
         return htdocsFolder;
     }
 
     public void setHtdocsFolder(String htdocsFolder) {
         this.htdocsFolder = htdocsFolder;
+    }
+
+    public String getMysqlUrl() {
+        return mysqlUrl;
+    }
+
+    public void setMysqlUrl(String mysqlUrl) {
+        this.mysqlUrl = mysqlUrl;
+    }
+
+    public String getMysqlUser() {
+        return mysqlUser;
+    }
+
+    public void setMysqlUser(String mysqlUser) {
+        this.mysqlUser = mysqlUser;
+    }
+
+    public String getMysqlPassword() {
+        return mysqlPassword;
+    }
+
+    public void setMysqlPassword(String mysqlPassword) {
+        this.mysqlPassword = mysqlPassword;
     }
 }

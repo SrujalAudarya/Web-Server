@@ -2,6 +2,7 @@ package config;
 
 import java.io.FileInputStream;
 import java.util.Properties;
+import models.ServerConfig;
 
 public class ConfigLoader {
 
@@ -26,12 +27,20 @@ public class ConfigLoader {
                     )
             );
 
-            config.setWwwFolder(
-                    props.getProperty("server.www")
-            );
-
             config.setHtdocsFolder(
                     props.getProperty("server.htdocs")
+            );
+
+            config.setMysqlUrl(
+                    props.getProperty("mysql.url")
+            );
+
+            config.setMysqlUser(
+                    props.getProperty("mysql.user")
+            );
+
+            config.setMysqlPassword(
+                    props.getProperty("mysql.password")
             );
 
         } catch (Exception e) {

@@ -1,8 +1,8 @@
 package handlers;
 
-import utils.ResponseUtil;
-
+import java.io.IOException;
 import java.io.OutputStream;
+import utils.ResponseUtil;
 
 public class MiddlewareHandler {
 
@@ -23,12 +23,12 @@ public class MiddlewareHandler {
 
             return true;
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
 
             try {
                 sendInternalServerError(output, e.getMessage());
-            } catch (Exception ignored) {
+            } catch (IOException ignored) {
             }
 
             return false;
@@ -38,7 +38,7 @@ public class MiddlewareHandler {
     public static void sendInternalServerError(
             OutputStream output,
             String message
-    ) throws Exception {
+    ) throws IOException {
 
         ResponseUtil.sendJson(
                 output,
@@ -49,7 +49,7 @@ public class MiddlewareHandler {
 
     public static void sendApiNotFound(
             OutputStream output
-    ) throws Exception {
+    ) throws IOException {
 
         ResponseUtil.sendJson(
                 output,
@@ -59,7 +59,7 @@ public class MiddlewareHandler {
 
     public static void sendMethodNotAllowed(
             OutputStream output
-    ) throws Exception {
+    ) throws IOException {
 
         ResponseUtil.sendJson(
                 output,
@@ -70,7 +70,7 @@ public class MiddlewareHandler {
     public static void sendBadRequest(
             OutputStream output,
             String message
-    ) throws Exception {
+    ) throws IOException {
 
         ResponseUtil.sendJson(
                 output,
@@ -81,7 +81,7 @@ public class MiddlewareHandler {
 
     public static void sendUnauthorized(
             OutputStream output
-    ) throws Exception {
+    ) throws IOException {
 
         ResponseUtil.sendJson(
                 output,

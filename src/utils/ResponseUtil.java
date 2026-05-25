@@ -14,10 +14,13 @@ public class ResponseUtil {
         String contentType = PathUtil.getContentType(
                 file.getName());
 
+        String cacheHeader = getCacheHeader(file.getName());
+
         String header = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: " + contentType + "\r\n"
-                + "Content-Length: " + fileBytes.length
-                + "\r\n\r\n";
+                + "Content-Length: " + fileBytes.length + "\r\n"
+                + cacheHeader
+                + "\r\n";
 
         output.write(header.getBytes());
         output.write(fileBytes);
@@ -92,5 +95,22 @@ public class ResponseUtil {
         output.write(header.getBytes());
         output.write(html.getBytes());
         output.flush();
+    }
+
+    private static String getCacheHeader(String fileName) {
+
+        if (fileName.endsWith(".css")
+                || fileName.endsWith(".js")
+                || fileName.endsWith(".png")
+                || fileName.endsWith(".jpg")
+                || fileName.endsWith(".jpeg")
+                || fileName.endsWith(".gif")
+                || fileName.endsWith(".svg")
+                || fileName.endsWith(".ico")) {
+
+            return "Cache-Control: public, max-age=86400\r\n";
+        }
+
+        return "Cache-Control: no-cache\r\n";
     }
 }

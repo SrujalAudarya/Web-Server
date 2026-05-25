@@ -1,11 +1,10 @@
 
 import config.ConfigLoader;
-import config.ServerConfig;
-
-import server.ClientHandler;
-
+import database.DatabaseManager;
 import java.net.ServerSocket;
 import java.net.Socket;
+import models.ServerConfig;
+import server.ClientHandler;
 
 public class MainServer {
 
@@ -13,8 +12,8 @@ public class MainServer {
 
         try {
 
-            ServerConfig config
-                    = ConfigLoader.load();
+            ServerConfig config = ConfigLoader.load();
+            DatabaseManager.connect(config);
 
             ServerSocket serverSocket
                     = new ServerSocket(

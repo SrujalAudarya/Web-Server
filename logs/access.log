@@ -417,3 +417,10 @@ Request: GET /server/style.css HTTP/1.1
 Request: GET /about HTTP/1.1
 Request: GET /style.css HTTP/1.1
 Request: GET /about/ HTTP/1.1
+Request: GET /server HTTP/1.1
+Request: GET /style.css HTTP/1.1
+Request: GET /script.js HTTP/1.1
+Request: GET /style.css HTTP/1.1
+Request: GET /server/ HTTP/1.1
+Request: GET /server/script.js HTTP/1.1
+Request: GET /server/style.css HTTP/1.1
