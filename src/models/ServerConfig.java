@@ -3,7 +3,6 @@ package models;
 public class ServerConfig {
 
     private int port;
-
     private String htdocsFolder;
 
     private String mysqlUrl;

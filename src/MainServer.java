@@ -37,7 +37,7 @@ public class MainServer {
             System.out.println(
                     "Open Server Panel: http://localhost:"
                     + config.getPort()
-                    + "/server"
+                    + "/javamyadmin/"
             );
 
             System.out.println(

@@ -1,20 +1,256 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Java Server</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaMyAdmin</title>
+
+    <link rel="stylesheet" href="/javamyadmin/style.css">
 </head>
 <body>
-    <h1>Welcome to My Own Java Web Server</h1>
-    <p>This page is running from Java server.</p>
 
-    <a href="/about">About</a> |
-    <a href="/contact">Contact</a>
+<div class="app">
 
-    <br><br>
+    <!-- Sidebar -->
+    <aside class="sidebar">
 
-    <button onclick="showMessage()">Click Me</button>
+        <div class="brand">
+            <img src="/javamyadmin/assets/logo.png" alt="JavaMyAdmin Logo">
+        </div>
 
-    <script src="script.js"></script>
+        <div class="server-box">
+            <p class="label">Server</p>
+            <h3>localhost</h3>
+            <span class="status online">MySQL Connected</span>
+        </div>
+
+        <nav class="menu">
+            <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
+            <a href="#" onclick="showSection('databases')">Databases</a>
+            <a href="#" onclick="showSection('tables')">Tables</a>
+            <a href="#" onclick="showSection('query')">SQL Query</a>
+            <a href="#" onclick="showSection('importExport')">Import / Export</a>
+            <a href="#" onclick="showSection('settings')">Settings</a>
+        </nav>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+        <header class="topbar">
+            <div>
+                <h1>JavaMyAdmin</h1>
+                <p>Database administration panel for MyJavaServer</p>
+            </div>
+
+            <button class="refresh-btn" onclick="refreshStatus()">Refresh</button>
+        </header>
+
+        <!-- Dashboard -->
+        <section id="dashboard" class="section active-section">
+
+            <div class="cards">
+
+                <div class="card">
+                    <h3>MySQL Status</h3>
+                    <p class="big green">Running</p>
+                    <span>Connected through JDBC</span>
+                </div>
+
+                <div class="card">
+                    <h3>Total Databases</h3>
+                    <p class="big">0</p>
+                    <span>Load from MySQL API</span>
+                </div>
+
+                <div class="card">
+                    <h3>Total Tables</h3>
+                    <p class="big">0</p>
+                    <span>Selected database required</span>
+                </div>
+
+                <div class="card">
+                    <h3>Server Port</h3>
+                    <p class="big">8090</p>
+                    <span>MyJavaServer running</span>
+                </div>
+
+            </div>
+
+            <div class="panel">
+                <h2>Quick Actions</h2>
+
+                <div class="actions">
+                    <button onclick="showSection('databases')">View Databases</button>
+                    <button onclick="showSection('query')">Run SQL Query</button>
+                    <button onclick="showSection('importExport')">Import / Export</button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Databases -->
+        <section id="databases" class="section">
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Databases</h2>
+
+                    <div class="inline-form">
+                        <input type="text" id="databaseName" placeholder="New database name">
+                        <button onclick="createDatabase()">Create</button>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Database Name</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="databaseList">
+                    <tr>
+                        <td>1</td>
+                        <td>exampledb</td>
+                        <td>
+                            <button class="small-btn" onclick="selectDatabase('exampledb')">Open</button>
+                            <button class="small-btn danger">Delete</button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+
+        <!-- Tables -->
+        <section id="tables" class="section">
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Tables</h2>
+                    <p id="selectedDatabaseText">Selected Database: none</p>
+                </div>
+
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Table Name</th>
+                        <th>Rows</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="tableList">
+                    <tr>
+                        <td colspan="4" class="empty">No database selected</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <h2>Table Records</h2>
+
+                <div id="recordsBox" class="records-box">
+                    Select a table to view records.
+                </div>
+            </div>
+
+        </section>
+
+        <!-- SQL Query -->
+        <section id="query" class="section">
+
+            <div class="panel">
+                <h2>Run SQL Query</h2>
+
+                <textarea id="sqlQuery" placeholder="Write SQL query here...">SHOW DATABASES;</textarea>
+
+                <div class="actions">
+                    <button onclick="runQuery()">Run Query</button>
+                    <button onclick="clearQuery()" class="secondary">Clear</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Query Result</h2>
+                <pre id="queryResult">Result will appear here...</pre>
+            </div>
+
+        </section>
+
+        <!-- Import Export -->
+        <section id="importExport" class="section">
+
+            <div class="panel">
+                <h2>Import Database File</h2>
+
+                <input type="file" id="importFile">
+
+                <div class="actions">
+                    <button onclick="importFile()">Import</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Export</h2>
+
+                <p>Export selected database or table as JSON / SQL.</p>
+
+                <div class="actions">
+                    <button onclick="exportDatabase()">Export Database</button>
+                    <button onclick="exportTable()">Export Table</button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="section">
+
+            <div class="panel">
+                <h2>Connection Settings</h2>
+
+                <div class="form-grid">
+                    <label>
+                        Host
+                        <input type="text" value="localhost">
+                    </label>
+
+                    <label>
+                        Port
+                        <input type="text" value="3306">
+                    </label>
+
+                    <label>
+                        Username
+                        <input type="text" value="root">
+                    </label>
+
+                    <label>
+                        Password
+                        <input type="password" placeholder="password">
+                    </label>
+                </div>
+
+                <div class="actions">
+                    <button onclick="testConnection()">Test Connection</button>
+                    <button class="secondary">Save Settings</button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="/javamyadmin/script.js"></script>
 </body>
 </html>

@@ -12,6 +12,9 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 
+import database.DatabaseManager;
+import java.sql.*;
+
 public class ApiHandler {
 
     private static final Map<String, String> sessions = new HashMap<>();
@@ -163,9 +166,155 @@ public class ApiHandler {
             return true;
         }
 
+        if (method.equals("GET") && path.equals("/api/javamyadmin/databases")) {
+
+            try {
+                ResultSet rs = DatabaseManager.executeQuery("SHOW DATABASES");
+
+                StringBuilder json = new StringBuilder("[");
+                boolean first = true;
+
+                while (rs != null && rs.next()) {
+                    if (!first) {
+                        json.append(",");
+                    }
+
+                    json.append("\"")
+                            .append(rs.getString(1))
+                            .append("\"");
+
+                    first = false;
+                }
+
+                json.append("]");
+
+                ResponseUtil.sendJson(output, json.toString());
+
+            } catch (SQLException e) {
+                MiddlewareHandler.sendInternalServerError(
+                        output,
+                        e.getMessage()
+                );
+            }
+
+            return true;
+        }
+
+        if (method.equals("GET") && path.startsWith("/api/javamyadmin/tables")) {
+
+            try {
+                Map<String, String> params = HttpUtil.parseQueryParams(path);
+                String db = params.get("db");
+
+                if (db == null) {
+                    MiddlewareHandler.sendBadRequest(output, "Database name required");
+                    return true;
+                }
+
+                ResultSet rs = DatabaseManager.executeQuery(
+                        "SHOW TABLES FROM " + db
+                );
+
+                StringBuilder json = new StringBuilder("[");
+                boolean first = true;
+
+                while (rs != null && rs.next()) {
+                    if (!first) {
+                        json.append(",");
+                    }
+
+                    json.append("\"")
+                            .append(rs.getString(1))
+                            .append("\"");
+
+                    first = false;
+                }
+
+                json.append("]");
+
+                ResponseUtil.sendJson(output, json.toString());
+
+            } catch (SQLException e) {
+                MiddlewareHandler.sendInternalServerError(
+                        output,
+                        e.getMessage()
+                );
+            }
+
+            return true;
+        }
+
+        if (method.equals("GET") && path.startsWith("/api/javamyadmin/records")) {
+
+            try {
+                Map<String, String> params = HttpUtil.parseQueryParams(path);
+
+                String db = params.get("db");
+                String table = params.get("table");
+
+                if (db == null || table == null) {
+                    MiddlewareHandler.sendBadRequest(
+                            output,
+                            "Database and table required"
+                    );
+                    return true;
+                }
+
+                ResultSet rs = DatabaseManager.executeQuery(
+                        "SELECT * FROM " + db + "." + table + " LIMIT 100"
+                );
+
+                if (rs == null) {
+                    MiddlewareHandler.sendBadRequest(output, "Query failed");
+                    return true;
+                }
+
+                ResultSetMetaData meta = rs.getMetaData();
+                int columns = meta.getColumnCount();
+
+                StringBuilder json = new StringBuilder("[");
+                boolean firstRow = true;
+
+                while (rs.next()) {
+                    if (!firstRow) {
+                        json.append(",");
+                    }
+
+                    json.append("{");
+
+                    for (int i = 1; i <= columns; i++) {
+                        if (i > 1) {
+                            json.append(",");
+                        }
+
+                        json.append("\"")
+                                .append(meta.getColumnName(i))
+                                .append("\":\"")
+                                .append(rs.getString(i))
+                                .append("\"");
+                    }
+
+                    json.append("}");
+                    firstRow = false;
+                }
+
+                json.append("]");
+
+                ResponseUtil.sendJson(output, json.toString());
+
+            } catch (SQLException e) {
+                MiddlewareHandler.sendInternalServerError(
+                        output,
+                        e.getMessage()
+                );
+            }
+
+            return true;
+        }
+
         // =========================
-// DYNAMIC CRUD ROUTES
-// =========================
+        // DYNAMIC CRUD ROUTES
+        // =========================
         if (handleDynamicCrud(
                 method,
                 path,
@@ -176,9 +325,9 @@ public class ApiHandler {
             return true;
         }
 
-// =========================
-// API NOT FOUND
-// =========================
+        // =========================
+        // API NOT FOUND
+        // =========================
         MiddlewareHandler.sendApiNotFound(output);
 
         return true;

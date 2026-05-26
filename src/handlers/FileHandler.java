@@ -1,10 +1,9 @@
 package handlers;
 
-import config.ServerConfig;
+import java.io.*;
+import models.ServerConfig;
 import utils.PathUtil;
 import utils.ResponseUtil;
-
-import java.io.*;
 
 public class FileHandler {
 

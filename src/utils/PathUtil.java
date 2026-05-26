@@ -9,14 +9,14 @@ public class PathUtil {
         }
 
         if (path.contains("?")) {
-            path = path.substring(
-                    0,
-                    path.indexOf("?"));
+            path = path.substring(0, path.indexOf("?"));
         }
 
-        if (!path.contains(".")
-                && !path.endsWith("/")) {
+        if (path.endsWith("/")) {
+            return path + "index.html";
+        }
 
+        if (!path.contains(".")) {
             return path + ".html";
         }
 
@@ -40,6 +40,10 @@ public class PathUtil {
 
         if (fileName.endsWith(".png")) {
             return "image/png";
+        }
+
+        if (fileName.endsWith(".svg")) {
+            return "image/svg+xml";
         }
 
         if (fileName.endsWith(".jpg")
