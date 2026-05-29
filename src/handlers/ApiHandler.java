@@ -327,79 +327,69 @@ public class ApiHandler {
         // =========================
         // SQL QUERY EXECUTION
         // =========================
-        if (method.equals("POST") && path.equals("/api/javamyadmin/query")) {
+        if (method.equals("POST")
+                && path.equals("/api/javamyadmin/query")) {
 
             try {
-                String body = RequestUtil.readRequestBody(reader, headers);
+
+                String body
+                        = RequestUtil.readRequestBody(reader, headers);
 
                 Map<String, Object> data
                         = gson.fromJson(body, Map.class);
 
-                String sql = String.valueOf(data.get("sql"));
+                String sql
+                        = String.valueOf(data.get("sql"));
 
-                if (sql == null || sql.trim().isEmpty() || sql.equals("null")) {
-                    MiddlewareHandler.sendBadRequest(output, "SQL query required");
-                    return true;
-                }
+                ResultSet rs
+                        = DatabaseManager.executeQuery(sql);
 
-                sql = sql.trim();
+                ResultSetMetaData meta
+                        = rs.getMetaData();
 
-                if (sql.toLowerCase().startsWith("select")
-                        || sql.toLowerCase().startsWith("show")
-                        || sql.toLowerCase().startsWith("describe")) {
+                int columns
+                        = meta.getColumnCount();
 
-                    ResultSet rs = DatabaseManager.executeQuery(sql);
+                StringBuilder json
+                        = new StringBuilder("[");
 
-                    if (rs == null) {
-                        MiddlewareHandler.sendBadRequest(output, "Query failed");
-                        return true;
+                boolean firstRow = true;
+
+                while (rs.next()) {
+
+                    if (!firstRow) {
+                        json.append(",");
                     }
 
-                    ResultSetMetaData meta = rs.getMetaData();
-                    int columns = meta.getColumnCount();
+                    json.append("{");
 
-                    StringBuilder json = new StringBuilder("[");
-                    boolean firstRow = true;
+                    for (int i = 1; i <= columns; i++) {
 
-                    while (rs.next()) {
-                        if (!firstRow) {
+                        if (i > 1) {
                             json.append(",");
                         }
 
-                        json.append("{");
-
-                        for (int i = 1; i <= columns; i++) {
-                            if (i > 1) {
-                                json.append(",");
-                            }
-
-                            json.append("\"")
-                                    .append(meta.getColumnName(i))
-                                    .append("\":\"")
-                                    .append(rs.getString(i))
-                                    .append("\"");
-                        }
-
-                        json.append("}");
-                        firstRow = false;
+                        json.append("\"")
+                                .append(meta.getColumnName(i))
+                                .append("\":\"")
+                                .append(rs.getString(i))
+                                .append("\"");
                     }
 
-                    json.append("]");
+                    json.append("}");
 
-                    ResponseUtil.sendJson(output, json.toString());
-
-                } else {
-
-                    int rows = DatabaseManager.executeUpdate(sql);
-
-                    ResponseUtil.sendJson(
-                            output,
-                            "{\"message\":\"Query executed successfully\",\"affectedRows\":"
-                            + rows + "}"
-                    );
+                    firstRow = false;
                 }
 
-            } catch (SQLException e) {
+                json.append("]");
+
+                ResponseUtil.sendJson(
+                        output,
+                        json.toString()
+                );
+
+            } catch (Exception e) {
+
                 MiddlewareHandler.sendInternalServerError(
                         output,
                         e.getMessage()
@@ -408,7 +398,6 @@ public class ApiHandler {
 
             return true;
         }
-
         // =========================
         // INSERT ROW
         // =========================
