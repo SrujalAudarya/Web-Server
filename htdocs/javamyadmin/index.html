@@ -3,19 +3,21 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>JavaMyAdmin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaMyAdmin</title>
 
-    <link rel="stylesheet" href="/javamyadmin/style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
 
     <div class="app">
 
+        <!-- SIDEBAR -->
         <aside class="sidebar">
+
             <div class="brand">
-                <img src="/javamyadmin/assets/logo.png" alt="JavaMyAdmin Logo">
+                <img src="./assets/logo.png" alt="JavaMyAdmin Logo">
             </div>
 
             <div class="server-box">
@@ -25,16 +27,38 @@
             </div>
 
             <nav class="menu">
-                <button class="menu-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
-                <button class="menu-btn" onclick="showSection('databases', this)">Databases</button>
-                <button class="menu-btn" onclick="showSection('tables', this)">Tables</button>
-                <button class="menu-btn" onclick="showSection('query', this)">SQL Query</button>
-                <button class="menu-btn" onclick="showSection('importExport', this)">Import / Export</button>
+                <button class="menu-btn active" data-section="dashboard"
+                    onclick="showSection('dashboard', this)">
+                    Dashboard
+                </button>
+
+                <button class="menu-btn" data-section="databases"
+                    onclick="showSection('databases', this)">
+                    Databases
+                </button>
+
+                <button class="menu-btn" data-section="tables"
+                    onclick="showSection('tables', this)">
+                    Tables
+                </button>
+
+                <button class="menu-btn" data-section="query"
+                    onclick="showSection('query', this)">
+                    SQL Query
+                </button>
+
+                <button class="menu-btn" data-section="importExport"
+                    onclick="showSection('importExport', this)">
+                    Import / Export
+                </button>
             </nav>
+
         </aside>
 
+        <!-- MAIN CONTENT -->
         <main class="main">
 
+            <!-- TOPBAR -->
             <header class="topbar">
                 <div>
                     <h1>JavaMyAdmin</h1>
@@ -44,11 +68,13 @@
                 <button onclick="refreshAll()">Refresh</button>
             </header>
 
-            <!-- DASHBOARD -->
+            <!-- DASHBOARD SECTION -->
             <section id="dashboard" class="section active-section">
+
                 <div class="cards">
+
                     <div class="card">
-                        <h3>Server</h3>
+                        <h3>Server Status</h3>
                         <p id="serverStatus" class="big green">Checking</p>
                         <span>Java backend status</span>
                     </div>
@@ -60,33 +86,49 @@
                     </div>
 
                     <div class="card">
-                        <h3>Selected DB</h3>
+                        <h3>Selected Database</h3>
                         <p id="selectedDbCard" class="big">None</p>
-                        <span>Current database</span>
+                        <span>Current working database</span>
                     </div>
 
                     <div class="card">
                         <h3>Selected Table</h3>
                         <p id="selectedTableCard" class="big">None</p>
-                        <span>Current table</span>
+                        <span>Current working table</span>
                     </div>
+
                 </div>
 
                 <div class="panel">
                     <h2>Quick Actions</h2>
+
                     <div class="actions">
-                        <button onclick="loadDatabases(); openSection('databases')">Load Databases</button>
-                        <button onclick="openSection('query')">Run SQL</button>
-                        <button onclick="openSection('importExport')">Import / Export</button>
+                        <button onclick="loadDatabases(); openSection('databases')">
+                            Load Databases
+                        </button>
+
+                        <button onclick="openSection('query')">
+                            Run SQL Query
+                        </button>
+
+                        <button onclick="openSection('importExport')">
+                            Import / Export
+                        </button>
                     </div>
                 </div>
+
             </section>
 
-            <!-- DATABASES -->
+            <!-- DATABASES SECTION -->
             <section id="databases" class="section">
+
                 <div class="panel">
+
                     <div class="panel-header">
-                        <h2>Databases</h2>
+                        <div>
+                            <h2>Databases</h2>
+                            <p>Create, open, or drop MySQL databases.</p>
+                        </div>
 
                         <div class="inline-form">
                             <input type="text" id="databaseName" placeholder="New database name">
@@ -102,28 +144,35 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
+
                         <tbody id="databaseList">
                             <tr>
-                                <td colspan="3" class="empty">Loading...</td>
+                                <td colspan="3" class="empty">Click Refresh or Load Databases</td>
                             </tr>
                         </tbody>
                     </table>
+
                 </div>
+
             </section>
 
-            <!-- TABLES -->
+            <!-- TABLES SECTION -->
             <section id="tables" class="section">
+
                 <div class="panel">
+
                     <div class="panel-header">
                         <div>
                             <h2>Tables</h2>
                             <p id="selectedDatabaseText">Selected Database: none</p>
                         </div>
 
-                        <div class="inline-form">
+                        <div class="inline-form wide-form">
                             <input type="text" id="newTableName" placeholder="Table name">
+
                             <input type="text" id="newTableColumns"
-                                placeholder="id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100)">
+                                placeholder="id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), email VARCHAR(100)">
+
                             <button onclick="createTable()">Create Table</button>
                         </div>
                     </div>
@@ -136,15 +185,18 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
+
                         <tbody id="tableList">
                             <tr>
-                                <td colspan="3" class="empty">No database selected</td>
+                                <td colspan="3" class="empty">Select a database first</td>
                             </tr>
                         </tbody>
                     </table>
+
                 </div>
 
                 <div class="panel">
+
                     <div class="panel-header">
                         <div>
                             <h2>Table Records</h2>
@@ -161,14 +213,16 @@
                     <div id="recordsBox" class="records-box">
                         Select a table to view records.
                     </div>
+
                 </div>
 
                 <div class="panel">
+
                     <h2>Row Operations</h2>
 
                     <p class="hint">
-                        Insert row JSON example:
-                        {"name":"Srujal","email":"srujal@gmail.com"}
+                        Insert / Update row using JSON format.
+                        Example: {"name":"Srujal","email":"srujal@gmail.com"}
                     </p>
 
                     <textarea id="rowJson" placeholder='{"name":"Srujal","email":"srujal@gmail.com"}'></textarea>
@@ -190,12 +244,16 @@
                         <button onclick="updateRow()">Update Row</button>
                         <button class="danger" onclick="deleteRow()">Delete Row</button>
                     </div>
+
                 </div>
+
             </section>
 
-            <!-- QUERY -->
+            <!-- SQL QUERY SECTION -->
             <section id="query" class="section">
+
                 <div class="panel">
+
                     <h2>Run SQL Query</h2>
 
                     <textarea id="sqlQuery" placeholder="Write SQL query here...">SHOW DATABASES;</textarea>
@@ -206,44 +264,73 @@
                         <button onclick="saveQuery()">Save Query</button>
                         <button class="secondary" onclick="clearQuery()">Clear</button>
                     </div>
+
                 </div>
 
                 <div class="panel">
+
                     <h2>Query Result</h2>
-                    <div id="queryResult" class="records-box">Result will appear here...</div>
-                </div>
 
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>Saved Queries</h2>
-                        <button onclick="loadSavedQueries()">Load Saved</button>
+                    <div id="queryResult" class="records-box">
+                        Result will appear here...
                     </div>
 
-                    <div id="savedQueriesBox" class="records-box">Saved queries will appear here...</div>
                 </div>
 
                 <div class="panel">
+
+                    <div class="panel-header">
+                        <h2>Saved Queries</h2>
+                        <button onclick="loadSavedQueries()">Load Saved Queries</button>
+                    </div>
+
+                    <div id="savedQueriesBox" class="records-box">
+                        Saved queries will appear here...
+                    </div>
+
+                </div>
+
+                <div class="panel">
+
                     <div class="panel-header">
                         <h2>Query History</h2>
                         <button onclick="loadQueryHistory()">Load History</button>
                     </div>
 
-                    <div id="queryHistoryBox" class="records-box">History will appear here...</div>
+                    <div id="queryHistoryBox" class="records-box">
+                        Query history will appear here...
+                    </div>
+
                 </div>
+
             </section>
 
-            <!-- IMPORT EXPORT -->
+            <!-- IMPORT EXPORT SECTION -->
             <section id="importExport" class="section">
+
                 <div class="panel">
+
                     <h2>Import SQL File</h2>
+
+                    <p class="hint">
+                        Upload a .sql or .txt file. The content will be executed by backend import SQL API.
+                    </p>
+
                     <input type="file" id="sqlImportFile" accept=".sql,.txt">
+
                     <div class="actions">
                         <button onclick="importSqlFile()">Import SQL</button>
                     </div>
+
                 </div>
 
                 <div class="panel">
+
                     <h2>Import CSV</h2>
+
+                    <p class="hint">
+                        First row must contain column names. Example: name,email
+                    </p>
 
                     <div class="form-grid">
                         <label>
@@ -262,25 +349,36 @@
                     <div class="actions">
                         <button onclick="importCsv()">Import CSV</button>
                     </div>
+
                 </div>
 
                 <div class="panel">
+
                     <h2>Export</h2>
 
+                    <p class="hint">
+                        Select a database/table first, then export data as JSON or CSV.
+                    </p>
+
                     <div class="actions">
-                        <button onclick="exportJson()">Export JSON</button>
-                        <button onclick="exportCsv()">Export CSV</button>
+                        <button onclick="exportJson()">Export Table JSON</button>
+                        <button onclick="exportCsv()">Export Table CSV</button>
                         <button onclick="exportDatabaseJson()">Export Database JSON</button>
                     </div>
 
-                    <div id="exportResult" class="records-box">Export result will appear here...</div>
+                    <div id="exportResult" class="records-box">
+                        Export result will appear here...
+                    </div>
+
                 </div>
+
             </section>
 
         </main>
+
     </div>
 
-    <script src="/javamyadmin/script.js"></script>
+    <script src="./script.js"></script>
 </body>
 
 </html>

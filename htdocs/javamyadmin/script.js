@@ -2,128 +2,183 @@ let selectedDatabase = null;
 let selectedTable = null;
 let databases = [];
 
+// =========================
+// COMMON API FUNCTION
+// =========================
+
+async function api(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+            },
+            ...options
+        });
+
+        const text = await response.text();
+
+        try {
+            return JSON.parse(text);
+        } catch {
+            return text;
+        }
+
+    } catch (error) {
+        console.error("API Error:", error);
+
+        return {
+            error: "Unable to connect backend",
+            details: error.message
+        };
+    }
+}
+
+// =========================
+// SECTION SWITCHING
+// =========================
+
 function showSection(sectionId, button = null) {
     document.querySelectorAll(".section").forEach(section => {
-        section.style.display = "none";
         section.classList.remove("active-section");
     });
 
-    const target = document.getElementById(sectionId);
+    const section = document.getElementById(sectionId);
 
-    if (target) {
-        target.style.display = "block";
-        target.classList.add("active-section");
+    if (section) {
+        section.classList.add("active-section");
     }
 
-    document.querySelectorAll(".menu a, .menu-btn").forEach(item => {
-        item.classList.remove("active");
+    document.querySelectorAll(".menu-btn").forEach(btn => {
+        btn.classList.remove("active");
     });
 
     if (button) {
         button.classList.add("active");
     }
 
+    if (sectionId === "dashboard") {
+        refreshAll();
+    }
+
     if (sectionId === "databases") {
         loadDatabases();
     }
 
-    if (sectionId === "tables" && selectedDatabase) {
+    if (sectionId === "tables") {
         loadTables();
     }
 }
 
 function openSection(sectionId) {
-    showSection(sectionId);
+    const btn = document.querySelector(`.menu-btn[data-section="${sectionId}"]`);
+    showSection(sectionId, btn);
 }
 
-async function api(url, options = {}) {
-    const response = await fetch(url, {
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {})
-        },
-        ...options
-    });
-
-    const text = await response.text();
-
-    try {
-        return JSON.parse(text);
-    } catch {
-        return text;
-    }
-}
+// =========================
+// DASHBOARD
+// =========================
 
 async function refreshAll() {
     await checkServerStatus();
-    await loadDatabases();
+    await loadDatabases(false);
 }
 
 async function checkServerStatus() {
-    try {
-        const result = await api("/api/status");
+    const result = await api("/api/status");
 
-        document.getElementById("serverStatus").innerText = "Running";
-        document.getElementById("mysqlStatus").innerText = "Connected";
-        document.getElementById("mysqlStatus").className = "status online";
-
-        console.log(result);
-    } catch (error) {
-        document.getElementById("serverStatus").innerText = "Error";
-        document.getElementById("mysqlStatus").innerText = "Disconnected";
-        document.getElementById("mysqlStatus").className = "status offline";
+    if (result && result.status === "running") {
+        setServerStatus("Running", "Connected", true);
+    } else {
+        setServerStatus("Error", "Disconnected", false);
     }
 }
 
-async function loadDatabases() {
+function setServerStatus(serverText, mysqlText, online) {
+    const serverStatus = document.getElementById("serverStatus");
+    const mysqlStatus = document.getElementById("mysqlStatus");
+
+    if (serverStatus) {
+        serverStatus.innerText = serverText;
+    }
+
+    if (mysqlStatus) {
+        mysqlStatus.innerText = mysqlText;
+        mysqlStatus.className = online ? "status online" : "status offline";
+    }
+}
+
+// =========================
+// DATABASES
+// =========================
+
+async function loadDatabases(openDbSection = true) {
     const tbody = document.getElementById("databaseList");
 
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="3" class="empty">Loading databases...</td>
-        </tr>
-    `;
-
-    try {
-        databases = await api("/api/javamyadmin/databases");
-
-        document.getElementById("databaseCount").innerText = databases.length;
-
-        if (!Array.isArray(databases) || databases.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="3" class="empty">No databases found</td>
-                </tr>
-            `;
-            return;
-        }
-
-        tbody.innerHTML = "";
-
-        databases.forEach((db, index) => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${db}</td>
-                    <td>
-                        <button class="small-btn" onclick="selectDatabase('${db}')">Open</button>
-                        <button class="small-btn danger" onclick="dropDatabase('${db}')">Drop</button>
-                    </td>
-                </tr>
-            `;
-        });
-
-    } catch (error) {
+    if (tbody) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="3" class="empty">Failed to load databases</td>
+                <td colspan="3" class="empty">Loading databases...</td>
             </tr>
         `;
     }
+
+    const result = await api("/api/javamyadmin/databases");
+
+    console.log("Databases:", result);
+
+    if (!Array.isArray(result)) {
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="empty">
+                        Failed to load databases<br>
+                        ${result.error || result.message || "Unknown error"}
+                    </td>
+                </tr>
+            `;
+        }
+
+        document.getElementById("databaseCount").innerText = "0";
+        setServerStatus("Running", "MySQL Error", false);
+        return;
+    }
+
+    databases = result;
+
+    document.getElementById("databaseCount").innerText = databases.length;
+    setServerStatus("Running", "MySQL Connected", true);
+
+    if (!tbody) return;
+
+    if (databases.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="empty">No databases found</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    databases.forEach((db, index) => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${db}</td>
+                <td>
+                    <button class="small-btn" onclick="selectDatabase('${escapeJs(db)}')">Open</button>
+                    <button class="small-btn danger" onclick="dropDatabase('${escapeJs(db)}')">Drop</button>
+                </td>
+            </tr>
+        `;
+    });
 }
 
 async function createDatabase() {
-    const dbName = document.getElementById("databaseName").value.trim();
+    const input = document.getElementById("databaseName");
+    const dbName = input.value.trim();
 
     if (!dbName) {
         alert("Enter database name");
@@ -136,12 +191,13 @@ async function createDatabase() {
     });
 
     alert(result.message || result.error || "Done");
-    document.getElementById("databaseName").value = "";
+
+    input.value = "";
     loadDatabases();
 }
 
 async function dropDatabase(db) {
-    if (!confirm("Drop database: " + db + "?")) {
+    if (!confirm("Are you sure you want to drop database: " + db + "?")) {
         return;
     }
 
@@ -151,19 +207,28 @@ async function dropDatabase(db) {
     });
 
     alert(result.message || result.error || "Done");
+
+    if (selectedDatabase === db) {
+        selectedDatabase = null;
+        selectedTable = null;
+        updateSelectedCards();
+    }
+
     loadDatabases();
 }
+
+// =========================
+// TABLES
+// =========================
 
 async function selectDatabase(db) {
     selectedDatabase = db;
     selectedTable = null;
 
+    updateSelectedCards();
+
     document.getElementById("selectedDatabaseText").innerText =
         "Selected Database: " + db;
-
-    document.getElementById("selectedDbCard").innerText = db;
-    document.getElementById("selectedTableCard").innerText = "None";
-    document.getElementById("selectedTableText").innerText = "Selected Table: none";
 
     openSection("tables");
 
@@ -173,10 +238,12 @@ async function selectDatabase(db) {
 async function loadTables() {
     const tbody = document.getElementById("tableList");
 
+    if (!tbody) return;
+
     if (!selectedDatabase) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="3" class="empty">No database selected</td>
+                <td colspan="3" class="empty">Select database first</td>
             </tr>
         `;
         return;
@@ -188,11 +255,25 @@ async function loadTables() {
         </tr>
     `;
 
-    const tables = await api(
+    const result = await api(
         "/api/javamyadmin/tables?db=" + encodeURIComponent(selectedDatabase)
     );
 
-    if (!Array.isArray(tables) || tables.length === 0) {
+    console.log("Tables:", result);
+
+    if (!Array.isArray(result)) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="empty">
+                    Failed to load tables<br>
+                    ${result.error || result.message || "Unknown error"}
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    if (result.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="3" class="empty">No tables found</td>
@@ -203,15 +284,15 @@ async function loadTables() {
 
     tbody.innerHTML = "";
 
-    tables.forEach((table, index) => {
+    result.forEach((table, index) => {
         tbody.innerHTML += `
             <tr>
                 <td>${index + 1}</td>
                 <td>${table}</td>
                 <td>
-                    <button class="small-btn" onclick="selectTable('${table}')">View</button>
-                    <button class="small-btn" onclick="renameTable('${table}')">Rename</button>
-                    <button class="small-btn danger" onclick="dropTable('${table}')">Drop</button>
+                    <button class="small-btn" onclick="selectTable('${escapeJs(table)}')">View</button>
+                    <button class="small-btn" onclick="renameTable('${escapeJs(table)}')">Rename</button>
+                    <button class="small-btn danger" onclick="dropTable('${escapeJs(table)}')">Drop</button>
                 </td>
             </tr>
         `;
@@ -242,6 +323,10 @@ async function createTable() {
     });
 
     alert(result.message || result.error || "Done");
+
+    document.getElementById("newTableName").value = "";
+    document.getElementById("newTableColumns").value = "";
+
     loadTables();
 }
 
@@ -264,15 +349,21 @@ async function dropTable(table) {
     });
 
     alert(result.message || result.error || "Done");
+
+    if (selectedTable === table) {
+        selectedTable = null;
+        updateSelectedCards();
+        document.getElementById("recordsBox").innerHTML =
+            "Select a table to view records.";
+    }
+
     loadTables();
 }
 
 async function renameTable(table) {
-    const newTable = prompt("New table name:", table + "_new");
+    const newTable = prompt("Enter new table name:", table + "_new");
 
-    if (!newTable) {
-        return;
-    }
+    if (!newTable) return;
 
     const result = await api("/api/javamyadmin/rename-table", {
         method: "PUT",
@@ -284,18 +375,24 @@ async function renameTable(table) {
     });
 
     alert(result.message || result.error || "Done");
+
     loadTables();
 }
 
 async function selectTable(table) {
     selectedTable = table;
 
-    document.getElementById("selectedTableCard").innerText = table;
+    updateSelectedCards();
+
     document.getElementById("selectedTableText").innerText =
         "Selected Table: " + table;
 
     await loadRecords();
 }
+
+// =========================
+// RECORDS
+// =========================
 
 async function loadRecords() {
     const box = document.getElementById("recordsBox");
@@ -307,14 +404,14 @@ async function loadRecords() {
 
     box.innerHTML = "Loading records...";
 
-    const records = await api(
+    const result = await api(
         "/api/javamyadmin/records?db="
         + encodeURIComponent(selectedDatabase)
         + "&table="
         + encodeURIComponent(selectedTable)
     );
 
-    renderTable(box, records);
+    renderTable(box, result);
 }
 
 async function describeTable() {
@@ -341,7 +438,7 @@ async function truncateTable() {
         return;
     }
 
-    if (!confirm("Remove all records from " + selectedTable + "?")) {
+    if (!confirm("Remove all rows from " + selectedTable + "?")) {
         return;
     }
 
@@ -354,7 +451,28 @@ async function truncateTable() {
     });
 
     alert(result.message || result.error || "Done");
+
     loadRecords();
+}
+
+// =========================
+// ROW CRUD
+// =========================
+
+function readRowJson() {
+    const text = document.getElementById("rowJson").value.trim();
+
+    if (!text) {
+        alert("Enter row JSON");
+        return null;
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        alert("Invalid JSON format");
+        return null;
+    }
 }
 
 async function insertRow() {
@@ -364,7 +482,6 @@ async function insertRow() {
     }
 
     const row = readRowJson();
-
     if (!row) return;
 
     const result = await api("/api/javamyadmin/insert-row", {
@@ -377,6 +494,7 @@ async function insertRow() {
     });
 
     alert(result.message || result.error || "Done");
+
     loadRecords();
 }
 
@@ -407,6 +525,7 @@ async function updateRow() {
     });
 
     alert(result.message || result.error || "Done");
+
     loadRecords();
 }
 
@@ -435,54 +554,31 @@ async function deleteRow() {
     });
 
     alert(result.message || result.error || "Done");
+
     loadRecords();
 }
 
-function readRowJson() {
-    try {
-        return JSON.parse(document.getElementById("rowJson").value.trim());
-    } catch {
-        alert("Invalid row JSON");
-        return null;
-    }
-}
+// =========================
+// SQL QUERY
+// =========================
 
 async function runQuery() {
-
-    const sql =
-        document.getElementById("sqlQuery")
-            .value
-            .trim();
+    const sql = document.getElementById("sqlQuery").value.trim();
 
     if (!sql) {
         alert("Write SQL query");
         return;
     }
 
-    try {
+    const box = document.getElementById("queryResult");
+    box.innerHTML = "Running query...";
 
-        const result = await api(
-            "/api/javamyadmin/query",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    sql: sql
-                })
-            }
-        );
+    const result = await api("/api/javamyadmin/query", {
+        method: "POST",
+        body: JSON.stringify({ sql })
+    });
 
-        console.log("SQL Result:", result);
-
-        renderResult("queryResult", result);
-
-    } catch (error) {
-
-        console.error(error);
-
-        document.getElementById("queryResult")
-            .innerHTML =
-            "<p style='color:red'>Query failed</p>";
-    }
+    renderResult("queryResult", result);
 }
 
 async function explainQuery() {
@@ -515,15 +611,20 @@ async function saveQuery() {
 
     const result = await api("/api/javamyadmin/save-query", {
         method: "POST",
-        body: JSON.stringify({ name, sql })
+        body: JSON.stringify({
+            name,
+            sql
+        })
     });
 
     alert(result.message || result.error || "Done");
+
     loadSavedQueries();
 }
 
 async function loadSavedQueries() {
     const box = document.getElementById("savedQueriesBox");
+    box.innerHTML = "Loading saved queries...";
 
     const result = await api("/api/javamyadmin/saved-queries");
 
@@ -535,10 +636,12 @@ async function loadSavedQueries() {
     box.innerHTML = "";
 
     result.forEach(item => {
+        const queryName = item.name.replace(".sql", "");
+
         box.innerHTML += `
             <div class="query-item">
                 <span>${item.name}</span>
-                <button onclick="runSavedQuery('${item.name.replace(".sql", "")}')">Run</button>
+                <button onclick="runSavedQuery('${escapeJs(queryName)}')">Run</button>
             </div>
         `;
     });
@@ -546,7 +649,8 @@ async function loadSavedQueries() {
 
 async function runSavedQuery(name) {
     const result = await api(
-        "/api/javamyadmin/run-saved-query?name=" + encodeURIComponent(name)
+        "/api/javamyadmin/run-saved-query?name="
+        + encodeURIComponent(name)
     );
 
     renderResult("queryResult", result);
@@ -555,6 +659,7 @@ async function runSavedQuery(name) {
 
 async function loadQueryHistory() {
     const box = document.getElementById("queryHistoryBox");
+    box.innerHTML = "Loading history...";
 
     const result = await api("/api/javamyadmin/query-history");
 
@@ -563,13 +668,20 @@ async function loadQueryHistory() {
         return;
     }
 
-    box.innerHTML = result.map(line => `<div>${line}</div>`).join("");
+    box.innerHTML = result
+        .map(line => `<div class="history-line">${line}</div>`)
+        .join("");
 }
 
 function clearQuery() {
     document.getElementById("sqlQuery").value = "";
-    document.getElementById("queryResult").innerHTML = "Result will appear here...";
+    document.getElementById("queryResult").innerHTML =
+        "Result will appear here...";
 }
+
+// =========================
+// IMPORT EXPORT
+// =========================
 
 async function importSqlFile() {
     const file = document.getElementById("sqlImportFile").files[0];
@@ -600,12 +712,14 @@ async function importCsv() {
     }
 
     const text = await file.text();
-    const lines = text.trim().split("\n");
+    const lines = text.trim().split(/\r?\n/);
 
-    const columns = lines[0].split(",").map(v => cleanCsv(v));
+    const columns = lines[0]
+        .split(",")
+        .map(value => cleanCsv(value));
 
     const rows = lines.slice(1).map(line => {
-        return line.split(",").map(v => cleanCsv(v));
+        return line.split(",").map(value => cleanCsv(value));
     });
 
     const result = await api("/api/javamyadmin/import-csv", {
@@ -639,7 +753,11 @@ async function exportJson() {
     );
 
     renderResult("exportResult", result);
-    downloadFile(selectedTable + ".json", JSON.stringify(result, null, 2));
+
+    downloadFile(
+        selectedTable + ".json",
+        JSON.stringify(result, null, 2)
+    );
 }
 
 async function exportCsv() {
@@ -675,19 +793,29 @@ async function exportDatabaseJson() {
     );
 
     renderResult("exportResult", result);
-    downloadFile(selectedDatabase + ".json", JSON.stringify(result, null, 2));
+
+    downloadFile(
+        selectedDatabase + ".json",
+        JSON.stringify(result, null, 2)
+    );
 }
+
+// =========================
+// RENDER HELPERS
+// =========================
 
 function renderResult(elementId, result) {
     const box = document.getElementById(elementId);
+
+    if (!box) return;
 
     if (Array.isArray(result)) {
         renderTable(box, result);
         return;
     }
 
-    if (typeof result === "object") {
-        box.innerText = JSON.stringify(result, null, 2);
+    if (typeof result === "object" && result !== null) {
+        box.innerHTML = `<pre>${escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
         return;
     }
 
@@ -695,8 +823,11 @@ function renderResult(elementId, result) {
 }
 
 function renderTable(container, data) {
+    if (!container) return;
+
     if (!Array.isArray(data)) {
-        container.innerText = JSON.stringify(data, null, 2);
+        container.innerHTML =
+            `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
         return;
     }
 
@@ -711,7 +842,7 @@ function renderTable(container, data) {
         <table class="result-table">
             <thead>
                 <tr>
-                    ${columns.map(col => `<th>${col}</th>`).join("")}
+                    ${columns.map(col => `<th>${escapeHtml(col)}</th>`).join("")}
                 </tr>
             </thead>
             <tbody>
@@ -720,7 +851,7 @@ function renderTable(container, data) {
     data.forEach(row => {
         html += `
             <tr>
-                ${columns.map(col => `<td>${row[col] ?? ""}</td>`).join("")}
+                ${columns.map(col => `<td>${escapeHtml(row[col] ?? "")}</td>`).join("")}
             </tr>
         `;
     });
@@ -731,6 +862,14 @@ function renderTable(container, data) {
     `;
 
     container.innerHTML = html;
+}
+
+function updateSelectedCards() {
+    document.getElementById("selectedDbCard").innerText =
+        selectedDatabase || "None";
+
+    document.getElementById("selectedTableCard").innerText =
+        selectedTable || "None";
 }
 
 function downloadFile(fileName, content) {
@@ -744,25 +883,24 @@ function downloadFile(fileName, content) {
     link.click();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
-    document.querySelectorAll(".section").forEach(section => {
-        section.style.display = "none";
-    });
+function escapeJs(value) {
+    return String(value)
+        .replaceAll("\\", "\\\\")
+        .replaceAll("'", "\\'");
+}
 
-    const dashboard = document.getElementById("dashboard");
-
-    if (dashboard) {
-        dashboard.style.display = "block";
-    }
-
-    try {
-        await checkServerStatus();
-        await loadDatabases();
-    } catch (e) {
-        console.error(e);
-    }
-});
+// =========================
+// INIT
+// =========================
 
 document.addEventListener("DOMContentLoaded", () => {
     showSection("dashboard", document.querySelector(".menu-btn.active"));
